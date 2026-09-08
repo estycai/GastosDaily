@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { Dashboard } from './ui/screens/Dashboard.tsx'
+﻿import { useState, useMemo } from 'react'
+import { Dashboard, type ExpenseItem } from './ui/screens/Dashboard.tsx'
 import { RegisterExpense } from './ui/screens/RegisterExpense.tsx'
 import { Settings } from './ui/screens/Settings.tsx'
+import { Login } from './ui/screens/Login.tsx'
 import { BottomNav, type TabType } from './ui/components/BottomNav.tsx'
-import type { ExpenseItem } from './ui/screens/Dashboard.tsx'
 import {
   daysRemaining,
   dailyAllowanceCents,
@@ -11,100 +11,226 @@ import {
   cycleSpentCents,
   type CalcMode,
 } from './domain/budget.ts'
+import {
+  useSession,
+  useCycle,
+  useExpenses,
+  useApiTokens,
+  getTodayBuenosAires,
+  formatFriendlyDate,
+  formatExpenseDateLabel,
+} from './application/index.ts'
+
+const CATEGORY_MAP: Record<string, { emoji: string; bg: string }> = {
+  comida: { emoji: '🍔', bg: '#1E1B4B' },
+  super: { emoji: '🛒', bg: '#064E3B' },
+  viaje: { emoji: '🚗', bg: '#172554' },
+  varios: { emoji: '🛍️', bg: '#1E293B' },
+}
 
 export function App() {
   const [currentTab, setCurrentTab] = useState<TabType>('hoy')
   const [isRegisterOpen, setIsRegisterOpen] = useState<boolean>(false)
 
-  // Cycle configuration state (mock/injected default matching the design worked example)
-  const [totalBudgetCents, setTotalBudgetCents] = useState<number>(30000000) // $ 300.000
-  const [closingDate, setClosingDate] = useState<string>('2026-09-30')
-  const [calcMode, setCalcMode] = useState<CalcMode>('dynamic')
+  // 1. Session hook
+  const {
+    session,
+    userId,
+    loading: sessionLoading,
+    error: sessionError,
+    sendMagicLink,
+    signOut,
+    clearError: clearSessionError,
+  } = useSession()
 
-  // Mock initial expenses matching the exact design state:
-  // Today is 20 Sep.
-  // Expenses recorded in cycle prior to today:
-  // Supermercado Día: $ 8.200 (yesterday 19 Sep)
-  // Plus previous expenses so that remaining before today is $ 100.000 (spent = $ 200.000 - $ 3.500)
-  // And today's expense: Café con tostadas: $ 3.500
-  // Total cycle spent = $ 200.000 (20.000.000 cents), so remaining is $ 100.000 (10.000.000 cents).
-  const [expenses, setExpenses] = useState<ExpenseItem[]>([
-    {
-      id: '1',
-      concept: 'Café con tostadas',
-      amountCents: 350000,
-      categoryEmoji: '☕',
-      iconBgColor: '#1E1B4B',
-      dateLabel: '13:30 hs • Tarjeta Visa',
-    },
-    {
-      id: '2',
-      concept: 'Supermercado Día',
-      amountCents: 820000,
-      categoryEmoji: '🛒',
-      iconBgColor: '#064E3B',
-      dateLabel: 'Ayer 19 Sep • Débito',
-    },
-  ])
+  // 2. Cycle hook
+  const {
+    activeCycle,
+    loading: cycleLoading,
+    createCycle,
+    updateCycle,
+  } = useCycle(userId)
 
-  // Additional prior cycle expenses so total cycle spent matches design (.000 total spent => .000 remaining)
-  const priorCycleSpentCents = 20000000 - 350000 - 820000
+  // 3. Expenses hook
+  const {
+    expenses,
+    todayExpenses: rawTodayExpenses,
+    createExpense,
+  } = useExpenses(userId, activeCycle?.id ?? null)
 
-  // Reference date: 20 Sep 2026 -> 10 days remaining to 2026-09-30
-  const todayStr = '2026-09-21'
-  const daysLeft = daysRemaining(todayStr, closingDate)
+  // 4. API tokens hook
+  const {
+    tokens: apiTokens,
+    loading: tokensLoading,
+    createdTokenPlaintext,
+    createToken,
+    revokeToken,
+    dismissPlaintextToken,
+  } = useApiTokens(userId)
 
-  // Current cycle spent
-  const visibleExpensesCents = cycleSpentCents(expenses.map((e) => e.amountCents))
-  const totalCycleSpent = priorCycleSpentCents + visibleExpensesCents
+  // Date and budget calculations
+  const todayStr = getTodayBuenosAires()
+
+  // Map expenses to UI ExpenseItem format for Dashboard feed
+  const mappedTodayExpenses: ExpenseItem[] = useMemo(() => {
+    return rawTodayExpenses.map((exp) => {
+      const catConfig = CATEGORY_MAP[exp.category] || CATEGORY_MAP['varios']
+      return {
+        id: exp.id,
+        concept: exp.concept || 'Gasto',
+        amountCents: exp.amountCents,
+        categoryEmoji: catConfig.emoji,
+        iconBgColor: catConfig.bg,
+        dateLabel: formatExpenseDateLabel(exp.createdAt, exp.expenseDate),
+      }
+    })
+  }, [rawTodayExpenses])
+
+  // Total budget and closing date from activeCycle
+  const totalBudgetCents = activeCycle?.totalBudgetCents ?? 0
+  const closingDate = activeCycle?.endDate ?? todayStr
+  const calcMode: CalcMode = activeCycle?.calcMode ?? 'dynamic'
+
+  // Days remaining (today inclusive through end date)
+  const daysLeft = useMemo(() => {
+    if (!activeCycle) return 0
+    return daysRemaining(todayStr, closingDate)
+  }, [todayStr, closingDate, activeCycle])
+
+  // Total expenses spent in the cycle
+  const totalCycleSpent = useMemo(() => {
+    return cycleSpentCents(expenses.map((e) => e.amountCents))
+  }, [expenses])
+
   const cycleRemaining = Math.max(0, totalBudgetCents - totalCycleSpent)
 
   // Daily allowance
-  const dailyAllowance = dailyAllowanceCents({
-    totalBudgetCents,
-    cycleSpentCents: totalCycleSpent,
-    daysRemaining: daysLeft,
-    calcMode,
-    totalCycleDays: 30,
-  })
+  const dailyAllowance = useMemo(() => {
+    if (!activeCycle) return 0
+    return dailyAllowanceCents({
+      totalBudgetCents,
+      cycleSpentCents: totalCycleSpent,
+      daysRemaining: daysLeft,
+      calcMode,
+      totalCycleDays: 30,
+    })
+  }, [totalBudgetCents, totalCycleSpent, daysLeft, calcMode, activeCycle])
 
-  // Spent today: Café con tostadas ($ 3.500) was spent today
-  const todayExpenseItems = expenses.filter((e) => e.id !== '2')
-  const todaySpentTotal = cycleSpentCents(todayExpenseItems.map((e) => e.amountCents))
+  // Spent today in cents
+  const todaySpentTotal = useMemo(() => {
+    return cycleSpentCents(rawTodayExpenses.map((e) => e.amountCents))
+  }, [rawTodayExpenses])
 
-  const currentPace = paceStatus(todaySpentTotal, dailyAllowance)
+  const currentPace = useMemo(() => {
+    return paceStatus(todaySpentTotal, dailyAllowance)
+  }, [todaySpentTotal, dailyAllowance])
 
-  // Period spent percentage
-  const periodSpentPercent = (totalCycleSpent / totalBudgetCents) * 100
+  const periodSpentPercent = totalBudgetCents > 0
+    ? (totalCycleSpent / totalBudgetCents) * 100
+    : 0
 
-  const handleRegisterExpense = (newExpense: {
+  // Register expense handler
+  const handleRegisterExpense = async (newExpense: {
     amountCents: number
     concept: string
     category: string
-    categoryEmoji: string
   }) => {
-    const newItem: ExpenseItem = {
-      id: Date.now().toString(),
-      concept: newExpense.concept,
-      amountCents: newExpense.amountCents,
-      categoryEmoji: newExpense.categoryEmoji,
-      iconBgColor: '#1E293B',
-      dateLabel: 'Ahora • Efectivo',
+    try {
+      await createExpense({
+        amountCents: newExpense.amountCents,
+        concept: newExpense.concept,
+        category: newExpense.category,
+        expenseDate: todayStr,
+      })
+      setIsRegisterOpen(false)
+    } catch (err) {
+      console.error('Failed to create expense:', err)
     }
-    setExpenses((prev) => [newItem, ...prev])
-    setIsRegisterOpen(false)
   }
 
-  const handleSaveSettings = (newSettings: {
+  // Save settings handler
+  const handleSaveSettings = async (newSettings: {
     budgetCents: number
     closingDate: string
     calcMode: CalcMode
   }) => {
-    setTotalBudgetCents(newSettings.budgetCents)
-    setClosingDate(newSettings.closingDate)
-    setCalcMode(newSettings.calcMode)
-    setCurrentTab('hoy')
+    try {
+      if (activeCycle) {
+        await updateCycle(activeCycle.id, {
+          totalBudgetCents: newSettings.budgetCents,
+          endDate: newSettings.closingDate,
+          calcMode: newSettings.calcMode,
+        })
+      } else {
+        await createCycle({
+          totalBudgetCents: newSettings.budgetCents,
+          endDate: newSettings.closingDate,
+          calcMode: newSettings.calcMode,
+          startDate: todayStr,
+          isActive: true,
+        })
+      }
+      setCurrentTab('hoy')
+    } catch (err) {
+      console.error('Failed to save cycle settings:', err)
+    }
   }
+
+  // 1. Loading gate: Show a dark loading state without flashing Login screen
+  if (sessionLoading || (session && cycleLoading)) {
+    return (
+      <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center justify-center text-[#F8FAFC]">
+        <div className="w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full animate-spin mb-4" />
+        <span className="text-[13px] font-medium text-[#64748B]">Cargando...</span>
+      </main>
+    )
+  }
+
+  // 2. Auth gate: No session -> Login
+  if (!session) {
+    return (
+      <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
+        <Login
+          onSendMagicLink={sendMagicLink}
+          error={sessionError}
+          onClearError={clearSessionError}
+        />
+      </main>
+    )
+  }
+
+  // 3. No active cycle gate: Direct user straight to Settings
+  if (!activeCycle) {
+    return (
+      <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
+        <div className="w-full px-5 pt-6 pb-2 text-[#F8FAFC]">
+          <div className="bg-[#1E293B] border border-[#3B82F6]/40 rounded-[18px] p-4 text-center">
+            <h2 className="text-[16px] font-bold text-[#FFFFFF] mb-1">
+              ¡Te damos la bienvenida! 👋
+            </h2>
+            <p className="text-[12px] text-[#94A3B8]">
+              Para comenzar, definí tu presupuesto mensual y la fecha de corte de tu ciclo.
+            </p>
+          </div>
+        </div>
+        <Settings
+          initialBudgetCents={30000000}
+          initialClosingDate={todayStr}
+          initialCalcMode="dynamic"
+          onSaveSettings={handleSaveSettings}
+          apiTokens={apiTokens}
+          createdTokenPlaintext={createdTokenPlaintext}
+          onCreateApiToken={createToken}
+          onRevokeApiToken={revokeToken}
+          onDismissPlaintextToken={dismissPlaintextToken}
+          apiTokensLoading={tokensLoading}
+          onSignOut={signOut}
+        />
+      </main>
+    )
+  }
+
+  // 4. Session & Active Cycle -> Render Main App
   return (
     <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
       {isRegisterOpen ? (
@@ -124,6 +250,13 @@ export function App() {
             initialClosingDate={closingDate}
             initialCalcMode={calcMode}
             onSaveSettings={handleSaveSettings}
+            apiTokens={apiTokens}
+            createdTokenPlaintext={createdTokenPlaintext}
+            onCreateApiToken={createToken}
+            onRevokeApiToken={revokeToken}
+            onDismissPlaintextToken={dismissPlaintextToken}
+            apiTokensLoading={tokensLoading}
+            onSignOut={signOut}
           />
           <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
         </>
@@ -133,13 +266,13 @@ export function App() {
             dailyAllowanceCents={dailyAllowance}
             paceStatus={currentPace}
             cycleDaysRemaining={daysLeft}
-            cycleClosingDateLabel="30 Sep"
+            cycleClosingDateLabel={formatFriendlyDate(closingDate)}
             cycleRemainingCents={cycleRemaining}
             totalBudgetCents={totalBudgetCents}
             periodSpentPercent={periodSpentPercent}
-            todayExpenses={expenses}
+            todayExpenses={mappedTodayExpenses}
             todayTotalSpentCents={todaySpentTotal}
-            todayDateLabel="20 Sep"
+            todayDateLabel={formatFriendlyDate(todayStr)}
             onOpenRegisterExpense={() => setIsRegisterOpen(true)}
           />
           <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
