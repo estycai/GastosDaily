@@ -17,9 +17,11 @@ allowance and over-spending lowers it.
 
 | Decision | Value | Rationale |
 | --- | --- | --- |
-| Auth | Supabase **anonymous** sign-in (`signInAnonymously`) | The design has no login screen. Anonymous sessions give a real `auth.uid()` so RLS works unchanged, and can later be upgraded to email without data migration. |
+| Auth | Supabase **magic link** (`signInWithOtp`) — ~~anonymous~~ | **Superseded 2026-09-08.** The product now needs an Apple Shortcut to POST expenses to an HTTP endpoint. A Shortcut has no browser and no session, so identity must be stable and recoverable across devices. Anonymous sessions are per-device and unrecoverable — clearing browser data orphans the data permanently. |
+| External write access | Personal API token + **Supabase Edge Function** | The Shortcut sends `Authorization: Bearer <token>`. A dedicated Node/Fastify server was rejected: its only job would be forwarding to Supabase, at the cost of hosting, a deploy pipeline and secret management. |
+| Repo layout | Single app + `supabase/functions/` — **not** `/front` + `/back` | Edge Functions deploy from `supabase/functions` by convention. A root-level front/back split would add two package manifests and a workspace tool for one static deployable plus one function. |
 | `Historial` tab | Rendered, **disabled**, empty state | No design exists for it. Do not invent a screen. |
-| Screens to build | `Hoy` (Dashboard), `Registrar Gasto`, `Ajustes` | Exactly what the design contains. |
+| Screens to build | `Hoy` (Dashboard), `Registrar Gasto`, `Ajustes`, **`Login`** | The first three come from the design. `Login` has no design and must be derived strictly from the tokens in section 4. |
 | UI copy language | **Spanish (es-AR)** — matches the design verbatim | The design is the contract. |
 | Code, identifiers, comments | **English** | Standard. |
 | Currency formatting | `es-AR`, `ARS`, no decimals — `$ 10.000` | Matches the design. |
@@ -127,6 +129,38 @@ Rule: `domain` imports nothing. `ui` never imports `infrastructure` directly —
   guaranteeing **one active cycle per user**.
 - The migration is already applied remotely. Mirror it into `supabase/migrations/` for the repo
   record; do not re-apply it.
+
+## 7b. External API — the Apple Shortcut contract
+
+One Edge Function, deployed at:
+
+```
+POST https://vsniofvjuminnkjladdi.supabase.co/functions/v1/register-expense
+Authorization: Bearer gd_<token>
+Content-Type: application/json
+
+{ "amount": 4500, "concept": "Almuerzo", "category": "comida" }
+```
+
+- `amount` is in **pesos** (what a human types into a Shortcut), converted to cents server-side.
+  Reject non-finite, zero, negative, and absurd values.
+- Response `200`: `{ "ok": true, "expenseId", "dailyAllowance", "remainingToday", "daysRemaining" }`
+  so the Shortcut can show a useful confirmation instead of a bare success.
+- Errors are JSON with a stable `error` code, never an HTML page:
+  `401 invalid_token` · `403 token_revoked` · `404 no_active_cycle` · `400 invalid_payload` · `405 method_not_allowed`.
+
+**Token scheme** — the security boundary, get this exactly right:
+
+- Format `gd_` + 32 random bytes, base64url. Generated with a CSPRNG, never `Math.random`.
+- The database stores **only** the SHA-256 hex hash in `api_tokens.token_hash`.
+  The plaintext is shown to the user once, at creation, and is never recoverable afterwards.
+- The function hashes the incoming bearer token and looks up that hash. Lookup is by hash, so
+  a leaked database still yields no usable token.
+- Reject any token whose `revoked_at` is set. Touch `last_used_at` on success.
+- The function uses the **service role** key from the `SUPABASE_SERVICE_ROLE_KEY` environment
+  variable, only *after* resolving the token to a `user_id`. Every subsequent query is scoped
+  to that `user_id`. The service role key must never appear in client code, in `.env.local`,
+  in the repo, or in any log line.
 
 ## 8. Definition of done
 

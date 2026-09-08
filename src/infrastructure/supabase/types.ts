@@ -17,6 +17,36 @@ export type Database = {
   };
   public: {
     Tables: {
+      api_tokens: {
+        Row: {
+          created_at: string;
+          id: string;
+          label: string;
+          last_used_at: string | null;
+          revoked_at: string | null;
+          token_hash: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          label?: string;
+          last_used_at?: string | null;
+          revoked_at?: string | null;
+          token_hash: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          label?: string;
+          last_used_at?: string | null;
+          revoked_at?: string | null;
+          token_hash?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       cycles: {
         Row: {
           calc_mode: string;
@@ -128,3 +158,7 @@ export type CycleUpdate = Omit<PublicTables['cycles']['Update'], 'calc_mode'> & 
 export type ExpenseRow = PublicTables['expenses']['Row'];
 export type ExpenseInsert = PublicTables['expenses']['Insert'];
 export type ExpenseUpdate = PublicTables['expenses']['Update'];
+
+export type ApiTokenRow = PublicTables['api_tokens']['Row'];
+export type ApiTokenInsert = PublicTables['api_tokens']['Insert'];
+export type ApiTokenUpdate = PublicTables['api_tokens']['Update'];
