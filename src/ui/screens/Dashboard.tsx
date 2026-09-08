@@ -1,15 +1,10 @@
-import React from 'react'
+﻿import React from 'react'
 import { formatArs } from '../format.ts'
 import type { PaceStatus } from '../../domain/budget.ts'
+import { DailyAllowanceCard } from '../components/DailyAllowanceCard.tsx'
+import { TodayExpensesFeed, type ExpenseItem } from '../components/TodayExpensesFeed.tsx'
 
-export interface ExpenseItem {
-  id: string
-  concept: string
-  amountCents: number
-  categoryEmoji: string
-  iconBgColor?: string
-  dateLabel: string
-}
+export type { ExpenseItem }
 
 export interface DashboardProps {
   dailyAllowanceCents: number
@@ -22,6 +17,8 @@ export interface DashboardProps {
   todayExpenses: ExpenseItem[]
   todayTotalSpentCents: number
   todayDateLabel: string
+  todaySpentCents: number
+  onDeleteExpense: (expenseId: string) => Promise<void>
   onOpenRegisterExpense: () => void
 }
 
@@ -36,6 +33,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   todayExpenses,
   todayTotalSpentCents,
   todayDateLabel,
+  todaySpentCents,
+  onDeleteExpense,
   onOpenRegisterExpense,
 }) => {
   const progressClamped = Math.max(0, Math.min(100, periodSpentPercent))
@@ -78,28 +77,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </header>
 
       {/* Hero Card: PODES GASTAR HOY */}
-      <section className="w-full bg-[#131B2E] border border-[#1E293B] rounded-[24px] p-5 mb-4 shadow-sm">
-        <div className="text-[11px] font-bold text-[#60A5FA] tracking-wider leading-[14px]">
-          PODÉS GASTAR HOY
-        </div>
-        <div className="text-[42px] font-bold text-[#FFFFFF] leading-[51px] my-3">
-          {formatArs(dailyAllowanceCents)}
-        </div>
-
-        {paceStatus === 'on-track' ? (
-          <div className="inline-flex items-center bg-[#064E3B] px-3 py-1.5 rounded-[14px] h-[28px]">
-            <span className="text-[11px] font-medium leading-[14px] text-[#34D399]">
-              ✓ Dentro del ritmo planeado
-            </span>
-          </div>
-        ) : (
-          <div className="inline-flex items-center bg-[#451A03] px-3 py-1.5 rounded-[14px] h-[28px]">
-            <span className="text-[11px] font-medium leading-[14px] text-[#F59E0B]">
-              ⚠️ Superaste el límite sugerido hoy
-            </span>
-          </div>
-        )}
-      </section>
+      <DailyAllowanceCard
+        dailyAllowanceCents={dailyAllowanceCents}
+        totalBudgetCents={totalBudgetCents}
+        paceStatus={paceStatus}
+        todaySpentCents={todaySpentCents}
+      />
 
       {/* KPI Cards: Dias Restantes & Disponible Total */}
       <section className="grid grid-cols-2 gap-3 w-full mb-4">
@@ -165,55 +148,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </button>
 
       {/* Expense Feed */}
-      <section className="w-full">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-[13px] font-bold leading-[16px] text-[#94A3B8]">
-            Gastos de hoy ({todayDateLabel})
-          </span>
-          <span className="text-[12px] leading-[15px] text-[#64748B]">
-            Total: {formatArs(-todayTotalSpentCents)}
-          </span>
-        </div>
-
-        {todayExpenses.length === 0 ? (
-          <div className="bg-[#111827] border border-[#1E293B] rounded-[16px] p-6 text-center text-[#64748B] text-[13px]">
-            No registraste gastos hoy todavía.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {todayExpenses.map((expense) => (
-              <div
-                key={expense.id}
-                className="w-full h-[64px] bg-[#111827] border border-[#1E293B] rounded-[16px] px-3.5 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-[38px] h-[38px] rounded-[12px] flex items-center justify-center shrink-0 text-[18px]"
-                    style={{
-                      backgroundColor: expense.iconBgColor || '#1E1B4B',
-                    }}
-                  >
-                    <span>{expense.categoryEmoji}</span>
-                  </div>
-
-                  <div className="flex flex-col justify-center">
-                    <span className="text-[14px] font-normal leading-[17px] text-[#F8FAFC] line-clamp-1">
-                      {expense.concept}
-                    </span>
-                    <span className="text-[11px] leading-[14px] text-[#64748B]">
-                      {expense.dateLabel}
-                    </span>
-                  </div>
-                </div>
-
-                <span className="text-[15px] font-bold leading-[18px] text-[#EF4444] shrink-0">
-                  {formatArs(-expense.amountCents)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <TodayExpensesFeed
+        todayExpenses={todayExpenses}
+        todayDateLabel={todayDateLabel}
+        todayTotalSpentCents={todayTotalSpentCents}
+        onDeleteExpense={onDeleteExpense}
+      />
     </div>
   )
 }

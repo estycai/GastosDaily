@@ -55,6 +55,7 @@ export function App() {
     loading: expensesLoading,
     error: expensesError,
     createExpense,
+    deleteExpense,
     refreshExpenses,
   } = useExpenses(userId, activeCycle?.id ?? null)
 
@@ -308,6 +309,8 @@ export function App() {
             todayExpenses={mappedTodayExpenses}
             todayTotalSpentCents={todaySpentTotal}
             todayDateLabel={formatFriendlyDate(todayStr)}
+            todaySpentCents={todaySpentTotal}
+            onDeleteExpense={deleteExpense}
             onOpenRegisterExpense={() => setIsRegisterOpen(true)}
           />
           <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
