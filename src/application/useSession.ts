@@ -4,6 +4,7 @@ import {
   getCurrentSession,
   onAuthStateChange,
   sendMagicLink as sendMagicLinkInfra,
+  signInWithGoogle as signInWithGoogleInfra,
   signOut as signOutInfra,
 } from '../infrastructure/auth/session.ts'
 
@@ -14,6 +15,7 @@ export interface UseSessionReturn {
   loading: boolean
   error: Error | null
   sendMagicLink: (email: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   clearError: () => void
 }
@@ -69,6 +71,17 @@ export function useSession(): UseSessionReturn {
     }
   }, [])
 
+  const signInWithGoogle = useCallback(async () => {
+    setError(null)
+    try {
+      await signInWithGoogleInfra()
+    } catch (err) {
+      const errorObj = err instanceof Error ? err : new Error(String(err))
+      setError(errorObj)
+      throw errorObj
+    }
+  }, [])
+
   const signOut = useCallback(async () => {
     setError(null)
     try {
@@ -94,6 +107,7 @@ export function useSession(): UseSessionReturn {
     loading,
     error,
     sendMagicLink,
+    signInWithGoogle,
     signOut,
     clearError,
   }

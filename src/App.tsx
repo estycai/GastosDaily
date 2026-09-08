@@ -34,6 +34,7 @@ export function App() {
     loading: sessionLoading,
     error: sessionError,
     sendMagicLink,
+    signInWithGoogle,
     signOut,
     clearError: clearSessionError,
   } = useSession()
@@ -199,6 +200,7 @@ export function App() {
       <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
         <Login
           onSendMagicLink={sendMagicLink}
+          onSignInWithGoogle={signInWithGoogle}
           error={sessionError}
           onClearError={clearSessionError}
         />

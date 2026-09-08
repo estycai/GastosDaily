@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   sendMagicLink,
+  signInWithGoogle,
   getCurrentUserId,
   onAuthStateChange,
   signOut,
   InvalidEmailError,
   MagicLinkAuthError,
+  OAuthAuthError,
   AuthSessionError,
   SignOutError,
   isValidEmail,
@@ -17,6 +19,7 @@ vi.mock('../supabase/client.ts', () => {
     supabase: {
       auth: {
         signInWithOtp: vi.fn(),
+        signInWithOAuth: vi.fn(),
         getSession: vi.fn(),
         onAuthStateChange: vi.fn(),
         signOut: vi.fn(),
@@ -106,6 +109,113 @@ describe('session - auth utilities', () => {
       });
 
       await expect(sendMagicLink('user@example.com')).rejects.toThrow(MagicLinkAuthError);
+    });
+  });
+
+  describe('signInWithGoogle', () => {
+    const originalWindow = globalThis.window;
+
+    afterEach(() => {
+      globalThis.window = originalWindow;
+    });
+
+    it('calls supabase.auth.signInWithOAuth with the google provider and origin redirect', async () => {
+      globalThis.window = {
+        location: { origin: 'https://app.gastosdaily.com' },
+      } as any;
+
+      vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValueOnce({
+        data: {} as any,
+        error: null,
+      });
+
+      await signInWithGoogle();
+
+      expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: {
+          redirectTo: 'https://app.gastosdaily.com',
+          queryParams: { prompt: 'select_account' },
+        },
+      });
+    });
+
+    it('handles environment where window is undefined gracefully', async () => {
+      // @ts-expect-error delete window in test environment
+      delete globalThis.window;
+
+      vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValueOnce({
+        data: {} as any,
+        error: null,
+      });
+
+      await signInWithGoogle();
+
+      expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: {
+          redirectTo: undefined,
+          queryParams: { prompt: 'select_account' },
+        },
+      });
+    });
+
+    it('throws OAuthAuthError when Supabase returns an error', async () => {
+      vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValueOnce({
+        data: {} as any,
+        error: { message: 'Network error', status: 500, name: 'AuthApiError' } as any,
+      });
+
+      await expect(signInWithGoogle()).rejects.toThrow(OAuthAuthError);
+    });
+
+    it('maps a disabled provider error to a friendly message', async () => {
+      vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValueOnce({
+        data: {} as any,
+        error: { message: 'Unsupported provider: provider is not enabled', status: 400, name: 'AuthApiError' } as any,
+      });
+
+      await expect(signInWithGoogle()).rejects.toThrow(
+        'El inicio de sesión con Google todavía no está habilitado. Probá con el enlace por correo.'
+      );
+    });
+
+    it('wraps a rejection thrown by the Supabase SDK into an OAuthAuthError', async () => {
+      const transportError = new Error('Failed to fetch');
+      vi.mocked(supabase.auth.signInWithOAuth).mockRejectedValueOnce(transportError);
+
+      await expect(signInWithGoogle()).rejects.toThrow(OAuthAuthError);
+    });
+
+    it('preserves the generic message and originalError when the SDK rejects', async () => {
+      const transportError = new Error('Failed to fetch');
+      vi.mocked(supabase.auth.signInWithOAuth).mockRejectedValueOnce(transportError);
+
+      await expect(signInWithGoogle()).rejects.toMatchObject({
+        name: 'OAuthAuthError',
+        message: 'No pudimos iniciar sesión con Google. Intentalo de nuevo.',
+        originalError: transportError,
+      });
+    });
+
+    it('does not double-wrap an OAuthAuthError it mapped itself', async () => {
+      const providerError = {
+        message: 'Unsupported provider: provider is not enabled',
+        status: 400,
+        name: 'AuthApiError',
+      };
+
+      vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValueOnce({
+        data: {} as any,
+        error: providerError as any,
+      });
+
+      await expect(signInWithGoogle()).rejects.toMatchObject({
+        name: 'OAuthAuthError',
+        message:
+          'El inicio de sesión con Google todavía no está habilitado. Probá con el enlace por correo.',
+        originalError: providerError,
+      });
     });
   });
 

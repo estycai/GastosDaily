@@ -28,6 +28,16 @@ export class SignOutError extends Error {
   }
 }
 
+export class OAuthAuthError extends Error {
+  readonly originalError?: unknown;
+
+  constructor(message: string, originalError?: unknown) {
+    super(message);
+    this.name = 'OAuthAuthError';
+    this.originalError = originalError;
+  }
+}
+
 export class AuthSessionError extends Error {
   readonly originalError?: unknown;
 
@@ -78,6 +88,61 @@ export async function sendMagicLink(email: string): Promise<void> {
     throw new MagicLinkAuthError(
       `Failed to send magic link: ${error.message}`,
       error
+    );
+  }
+}
+
+/**
+ * Starts the Google OAuth flow through Supabase and redirects the browser.
+ * Sets redirectTo to window.location.origin and forces the account chooser.
+ * No callback route is required: the Supabase client detects the session in the
+ * returned URL and the active onAuthStateChange subscription picks it up.
+ */
+export async function signInWithGoogle(): Promise<void> {
+  const redirectTo =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : undefined;
+
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+
+    if (error) {
+      const normalizedMessage = error.message?.toLowerCase() ?? '';
+      const isProviderDisabled =
+        normalizedMessage.includes('provider is not enabled') ||
+        normalizedMessage.includes('unsupported provider');
+
+      if (isProviderDisabled) {
+        throw new OAuthAuthError(
+          'El inicio de sesión con Google todavía no está habilitado. Probá con el enlace por correo.',
+          error
+        );
+      }
+
+      throw new OAuthAuthError(
+        'No pudimos iniciar sesión con Google. Intentalo de nuevo.',
+        error
+      );
+    }
+  } catch (caught) {
+    // Errors mapped above are already normalised: re-throw them untouched so
+    // their specific message is not replaced by the generic one.
+    if (caught instanceof OAuthAuthError) {
+      throw caught;
+    }
+
+    // The SDK itself threw or rejected (transport/network failure), so the
+    // caller never saw an `{ error }` payload. Normalise it too.
+    throw new OAuthAuthError(
+      'No pudimos iniciar sesión con Google. Intentalo de nuevo.',
+      caught
     );
   }
 }
