@@ -271,11 +271,6 @@ export function App() {
       {isRegisterOpen ? (
         <RegisterExpense
           currentDailyAllowanceCents={dailyAllowance}
-          cycleDaysRemaining={daysLeft}
-          totalBudgetCents={totalBudgetCents}
-          cycleSpentCents={totalCycleSpent}
-          calcMode={calcMode}
-          totalCycleDays={totalCycleDays}
           onClose={() => setIsRegisterOpen(false)}
           onConfirmExpense={handleRegisterExpense}
         />

@@ -1,16 +1,9 @@
 import React, { useState } from 'react'
 import { formatArs } from '../format.ts'
-import { projectAllowanceAfter } from '../../domain/budget.ts'
-import type { CalcMode } from '../../domain/budget.ts'
 import { CATEGORIES } from '../../domain/categories.ts'
 
 export interface RegisterExpenseProps {
   currentDailyAllowanceCents: number
-  cycleDaysRemaining: number
-  totalBudgetCents: number
-  cycleSpentCents: number
-  calcMode: CalcMode
-  totalCycleDays: number
   onClose: () => void
   onConfirmExpense: (expense: {
     amountCents: number
@@ -21,11 +14,6 @@ export interface RegisterExpenseProps {
 
 export const RegisterExpense: React.FC<RegisterExpenseProps> = ({
   currentDailyAllowanceCents,
-  cycleDaysRemaining,
-  totalBudgetCents,
-  cycleSpentCents,
-  calcMode,
-  totalCycleDays,
   onClose,
   onConfirmExpense,
 }) => {
@@ -42,17 +30,6 @@ export const RegisterExpense: React.FC<RegisterExpenseProps> = ({
   const remainingTodayText = remainingTodayCents >= 0
     ? `Te quedarían ${formatArs(remainingTodayCents)} para hoy`
     : `Superarías tu límite diario por ${formatArs(Math.abs(remainingTodayCents))}`
-
-  const futureDays = Math.max(0, cycleDaysRemaining - 1)
-  const projectedAllowanceCents = projectAllowanceAfter({
-    currentDailyAllowanceCents,
-    daysRemaining: cycleDaysRemaining,
-    totalBudgetCents,
-    cycleSpentCents,
-    calcMode,
-    additionalExpenseCents: expenseAmountCents,
-    totalCycleDays,
-  })
 
   const handleDigit = (digit: string) => {
     if (amountStr === '0' && digit === '0') return
@@ -176,28 +153,6 @@ export const RegisterExpense: React.FC<RegisterExpenseProps> = ({
               </button>
             )
           })}
-        </div>
-      </section>
-
-      {/* Impact Simulator Card */}
-      <section className="w-full bg-[#0B1528] border border-[#1D4ED8] rounded-[20px] p-4 mb-4">
-        <div className="text-[11px] font-bold text-[#60A5FA] tracking-wider leading-[14px] mb-2">
-          ⚡ IMPACTO EN TU PRESUPUESTO
-        </div>
-        <div className="text-[13px] leading-[16px] text-[#94A3B8] mb-2">
-          Nuevo diario sugerido ({futureDays} días rest.):
-        </div>
-        <div className="flex justify-between items-baseline">
-          <span className="text-[18px] font-bold leading-[22px] text-[#F8FAFC]">
-            {formatArs(projectedAllowanceCents)} / día
-          </span>
-          <span
-            className={`text-[11px] font-medium leading-[14px] ${
-              projectedAllowanceCents > 0 ? 'text-[#34D399]' : 'text-[#EF4444]'
-            }`}
-          >
-            {projectedAllowanceCents > 0 ? '✓ Límite saludable' : '⚠️ Límite agotado'}
-          </span>
         </div>
       </section>
 
