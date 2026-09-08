@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { formatArs } from '../format.ts'
 import type { PaceStatus } from '../../domain/budget.ts'
 import { DailyAllowanceCard } from '../components/DailyAllowanceCard.tsx'
@@ -50,13 +50,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }
 
   return (
-    <div className="flex flex-col w-full px-5 pt-3 pb-24 text-[#F8FAFC]">
-      {/* Status Bar */}
-      <div className="flex justify-between items-center w-full text-[14px] text-[#FFFFFF] font-bold mb-4 px-3">
-        <span>9:41</span>
-        <span className="text-[12px] font-normal text-[#94A3B8]">100%</span>
-      </div>
-
+    <div className="flex flex-col w-full px-5 pt-6 pb-24 text-[#F8FAFC]">
       {/* Screen Header */}
       <header className="flex justify-between items-center w-full mb-5">
         <div>
