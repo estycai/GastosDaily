@@ -103,6 +103,35 @@ dailyAllowance = (totalBudget - sumOfCycleExpenses) / daysRemaining
 - Guard every edge: `daysRemaining <= 0`, budget exhausted (clamp at `0`, never negative),
   empty cycle, expense larger than what remains.
 
+### 5b. Hero metric — changed in iteration 2
+
+**Superseded:** the hero used to display `dailyAllowance` flat, so the headline number never
+moved as the day went on. A user who had already spent still read the full allowance and had
+to do the subtraction in their head — which defeats the point of the app.
+
+The hero now shows what is **left for today**:
+
+```
+remainingToday = dailyAllowance - spentToday
+```
+
+- The label reads **"Te quedan por gastar hoy"**.
+- When `spentToday > 0`, the slot to the right of the amount shows today's spend as a negative
+  figure (`-$ 6.500`) instead of the cycle total. When `spentToday == 0` the card keeps its
+  previous appearance, so a fresh day looks exactly as it did before.
+- `remainingToday` may go **negative** and must be shown as such — an overspent day is
+  information the user needs, not an error to hide. This is the one deliberate exception to
+  the clamp-at-zero rule above, which still applies to `dailyAllowance` itself.
+- The pace badge keeps its existing rule; it is driven by `spentToday` vs `dailyAllowance`,
+  not by `remainingToday`.
+
+### 5c. Deleting an expense — added in iteration 2
+
+An expense can be deleted from the daily feed. Deletion is a real `DELETE` scoped by
+`user_id`, not a soft flag, and every derived figure (`remainingToday`, `dailyAllowance`,
+cycle progress, pace badge) recomputes from the surviving rows. Deleting is destructive and
+irreversible, so it must be confirmed before it runs.
+
 ## 6. Architecture
 
 ```
