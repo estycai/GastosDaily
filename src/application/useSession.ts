@@ -1,7 +1,7 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import {
-  getCurrentUserId,
+  getCurrentSession,
   onAuthStateChange,
   sendMagicLink as sendMagicLinkInfra,
   signOut as signOutInfra,
@@ -28,29 +28,28 @@ export function useSession(): UseSessionReturn {
   useEffect(() => {
     let isMounted = true
 
-    // Subscribe to auth state changes
-    const unsubscribe = onAuthStateChange((_event, newSession) => {
+    const applySession = (newSession: Session | null) => {
       if (!isMounted) return
       setSession(newSession)
       setUser(newSession?.user ?? null)
       setUserId(newSession?.user?.id ?? null)
       setLoading(false)
+    }
+
+    // Subscribe to auth state changes
+    const unsubscribe = onAuthStateChange((_event, newSession) => {
+      applySession(newSession)
     })
 
-    // Resolve initial session
-    getCurrentUserId()
-      .then((id) => {
-        if (!isMounted) return
-        setUserId(id)
+    // Resolve initial session from getSession
+    getCurrentSession()
+      .then((initialSession) => {
+        applySession(initialSession)
       })
       .catch((err) => {
         if (!isMounted) return
         setError(err instanceof Error ? err : new Error(String(err)))
-      })
-      .finally(() => {
-        if (isMounted) {
-          setLoading(false)
-        }
+        setLoading(false)
       })
 
     return () => {

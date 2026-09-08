@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Dashboard, type ExpenseItem } from './ui/screens/Dashboard.tsx'
 import { RegisterExpense } from './ui/screens/RegisterExpense.tsx'
 import { Settings } from './ui/screens/Settings.tsx'
@@ -9,8 +9,10 @@ import {
   dailyAllowanceCents,
   paceStatus,
   cycleSpentCents,
+  cycleLengthDays,
+  CATEGORY_MAP,
   type CalcMode,
-} from './domain/budget.ts'
+} from './domain/index.ts'
 import {
   useSession,
   useCycle,
@@ -20,13 +22,6 @@ import {
   formatFriendlyDate,
   formatExpenseDateLabel,
 } from './application/index.ts'
-
-const CATEGORY_MAP: Record<string, { emoji: string; bg: string }> = {
-  comida: { emoji: '🍔', bg: '#1E1B4B' },
-  super: { emoji: '🛒', bg: '#064E3B' },
-  viaje: { emoji: '🚗', bg: '#172554' },
-  varios: { emoji: '🛍️', bg: '#1E293B' },
-}
 
 export function App() {
   const [currentTab, setCurrentTab] = useState<TabType>('hoy')
@@ -47,25 +42,32 @@ export function App() {
   const {
     activeCycle,
     loading: cycleLoading,
+    error: cycleError,
     createCycle,
     updateCycle,
+    refreshCycle,
   } = useCycle(userId)
 
   // 3. Expenses hook
   const {
     expenses,
     todayExpenses: rawTodayExpenses,
+    loading: expensesLoading,
+    error: expensesError,
     createExpense,
+    refreshExpenses,
   } = useExpenses(userId, activeCycle?.id ?? null)
 
   // 4. API tokens hook
   const {
     tokens: apiTokens,
     loading: tokensLoading,
+    error: tokensError,
     createdTokenPlaintext,
     createToken,
     revokeToken,
     dismissPlaintextToken,
+    refreshTokens,
   } = useApiTokens(userId)
 
   // Date and budget calculations
@@ -86,10 +88,16 @@ export function App() {
     })
   }, [rawTodayExpenses])
 
-  // Total budget and closing date from activeCycle
+  // Total budget, dates and totalCycleDays from activeCycle
   const totalBudgetCents = activeCycle?.totalBudgetCents ?? 0
   const closingDate = activeCycle?.endDate ?? todayStr
+  const startDate = activeCycle?.startDate ?? todayStr
   const calcMode: CalcMode = activeCycle?.calcMode ?? 'dynamic'
+
+  const totalCycleDays = useMemo(() => {
+    if (!activeCycle) return 30
+    return cycleLengthDays(startDate, closingDate)
+  }, [activeCycle, startDate, closingDate])
 
   // Days remaining (today inclusive through end date)
   const daysLeft = useMemo(() => {
@@ -112,9 +120,9 @@ export function App() {
       cycleSpentCents: totalCycleSpent,
       daysRemaining: daysLeft,
       calcMode,
-      totalCycleDays: 30,
+      totalCycleDays,
     })
-  }, [totalBudgetCents, totalCycleSpent, daysLeft, calcMode, activeCycle])
+  }, [totalBudgetCents, totalCycleSpent, daysLeft, calcMode, activeCycle, totalCycleDays])
 
   // Spent today in cents
   const todaySpentTotal = useMemo(() => {
@@ -135,17 +143,13 @@ export function App() {
     concept: string
     category: string
   }) => {
-    try {
-      await createExpense({
-        amountCents: newExpense.amountCents,
-        concept: newExpense.concept,
-        category: newExpense.category,
-        expenseDate: todayStr,
-      })
-      setIsRegisterOpen(false)
-    } catch (err) {
-      console.error('Failed to create expense:', err)
-    }
+    await createExpense({
+      amountCents: newExpense.amountCents,
+      concept: newExpense.concept,
+      category: newExpense.category,
+      expenseDate: todayStr,
+    })
+    setIsRegisterOpen(false)
   }
 
   // Save settings handler
@@ -154,30 +158,32 @@ export function App() {
     closingDate: string
     calcMode: CalcMode
   }) => {
-    try {
-      if (activeCycle) {
-        await updateCycle(activeCycle.id, {
-          totalBudgetCents: newSettings.budgetCents,
-          endDate: newSettings.closingDate,
-          calcMode: newSettings.calcMode,
-        })
-      } else {
-        await createCycle({
-          totalBudgetCents: newSettings.budgetCents,
-          endDate: newSettings.closingDate,
-          calcMode: newSettings.calcMode,
-          startDate: todayStr,
-          isActive: true,
-        })
-      }
-      setCurrentTab('hoy')
-    } catch (err) {
-      console.error('Failed to save cycle settings:', err)
+    if (activeCycle) {
+      await updateCycle(activeCycle.id, {
+        totalBudgetCents: newSettings.budgetCents,
+        endDate: newSettings.closingDate,
+        calcMode: newSettings.calcMode,
+      })
+    } else {
+      await createCycle({
+        totalBudgetCents: newSettings.budgetCents,
+        endDate: newSettings.closingDate,
+        calcMode: newSettings.calcMode,
+        startDate: todayStr,
+        isActive: true,
+      })
     }
+    setCurrentTab('hoy')
+  }
+
+  const handleRetryLoad = () => {
+    if (cycleError) refreshCycle()
+    if (expensesError) refreshExpenses()
+    if (tokensError) refreshTokens()
   }
 
   // 1. Loading gate: Show a dark loading state without flashing Login screen
-  if (sessionLoading || (session && cycleLoading)) {
+  if (sessionLoading || (session && (cycleLoading || (activeCycle && expensesLoading)))) {
     return (
       <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center justify-center text-[#F8FAFC]">
         <div className="w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full animate-spin mb-4" />
@@ -199,7 +205,35 @@ export function App() {
     )
   }
 
-  // 3. No active cycle gate: Direct user straight to Settings
+  // 3. Error gate: Genuine network or server failure loading data
+  // Must distinguish "failed to load" from "user has no cycle configured yet"
+  const loadError = cycleError || (activeCycle && expensesError) || tokensError
+  if (loadError) {
+    return (
+      <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center justify-center px-5 py-8 text-[#F8FAFC]">
+        <div className="w-full max-w-[353px] bg-[#111827] border border-[#1E293B] rounded-[24px] p-6 text-center shadow-xl">
+          <div className="w-12 h-12 rounded-full bg-[#450A0A] border border-[#EF4444]/30 flex items-center justify-center mx-auto mb-4 text-[#EF4444] text-[20px]">
+            ⚠️
+          </div>
+          <h2 className="text-[18px] font-bold text-[#FFFFFF] mb-2">
+            No pudimos cargar tus datos
+          </h2>
+          <p className="text-[13px] leading-[18px] text-[#94A3B8] mb-5">
+            Ocurrió un error al conectar con el servidor. No podemos mostrar tu saldo financiero sin información actualizada.
+          </p>
+          <button
+            type="button"
+            onClick={handleRetryLoad}
+            className="w-full h-[48px] bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-[0.99] text-[#FFFFFF] text-[14px] font-bold rounded-[14px] flex items-center justify-center cursor-pointer transition-colors shadow-md"
+          >
+            Reintentar
+          </button>
+        </div>
+      </main>
+    )
+  }
+
+  // 4. No active cycle gate: Direct user straight to Settings
   if (!activeCycle) {
     return (
       <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
@@ -230,7 +264,7 @@ export function App() {
     )
   }
 
-  // 4. Session & Active Cycle -> Render Main App
+  // 5. Session & Active Cycle -> Render Main App
   return (
     <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
       {isRegisterOpen ? (
@@ -240,6 +274,7 @@ export function App() {
           totalBudgetCents={totalBudgetCents}
           cycleSpentCents={totalCycleSpent}
           calcMode={calcMode}
+          totalCycleDays={totalCycleDays}
           onClose={() => setIsRegisterOpen(false)}
           onConfirmExpense={handleRegisterExpense}
         />

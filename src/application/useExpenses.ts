@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   listExpensesForCycle as listExpensesInfra,
   createExpense as createExpenseInfra,
@@ -25,11 +25,24 @@ export function useExpenses(userId: string | null, cycleId: string | null): UseE
   const [expenses, setExpenses] = useState<ExpenseEntity[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<Error | null>(null)
+  const fetchRequestIdRef = useRef<number>(0)
+  const isMountedRef = useRef<boolean>(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const fetchExpenses = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current
+
     if (!userId || !cycleId) {
-      setExpenses([])
-      setLoading(false)
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setExpenses([])
+        setLoading(false)
+      }
       return
     }
 
@@ -37,11 +50,17 @@ export function useExpenses(userId: string | null, cycleId: string | null): UseE
     setError(null)
     try {
       const data = await listExpensesInfra(userId, cycleId)
-      setExpenses(data)
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setExpenses(data)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)))
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setError(err instanceof Error ? err : new Error(String(err)))
+      }
     } finally {
-      setLoading(false)
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setLoading(false)
+      }
     }
   }, [userId, cycleId])
 

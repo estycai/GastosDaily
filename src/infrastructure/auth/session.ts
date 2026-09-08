@@ -83,9 +83,9 @@ export async function sendMagicLink(email: string): Promise<void> {
 }
 
 /**
- * Returns the currently authenticated user's ID, or null if no user is signed in.
+ * Returns the current session, or null if no user is signed in.
  */
-export async function getCurrentUserId(): Promise<string | null> {
+export async function getCurrentSession(): Promise<Session | null> {
   const { data, error } = await supabase.auth.getSession();
 
   if (error) {
@@ -95,7 +95,15 @@ export async function getCurrentUserId(): Promise<string | null> {
     );
   }
 
-  return data.session?.user?.id ?? null;
+  return data.session;
+}
+
+/**
+ * Returns the currently authenticated user's ID, or null if no user is signed in.
+ */
+export async function getCurrentUserId(): Promise<string | null> {
+  const session = await getCurrentSession();
+  return session?.user?.id ?? null;
 }
 
 /**

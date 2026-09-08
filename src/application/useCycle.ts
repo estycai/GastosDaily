@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   getActiveCycle as getActiveCycleInfra,
   createCycle as createCycleInfra,
@@ -24,11 +24,24 @@ export function useCycle(userId: string | null): UseCycleReturn {
   const [activeCycle, setActiveCycle] = useState<CycleEntity | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<Error | null>(null)
+  const fetchRequestIdRef = useRef<number>(0)
+  const isMountedRef = useRef<boolean>(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const fetchCycle = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current
+
     if (!userId) {
-      setActiveCycle(null)
-      setLoading(false)
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setActiveCycle(null)
+        setLoading(false)
+      }
       return
     }
 
@@ -36,11 +49,17 @@ export function useCycle(userId: string | null): UseCycleReturn {
     setError(null)
     try {
       const cycle = await getActiveCycleInfra(userId)
-      setActiveCycle(cycle)
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setActiveCycle(cycle)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)))
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setError(err instanceof Error ? err : new Error(String(err)))
+      }
     } finally {
-      setLoading(false)
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setLoading(false)
+      }
     }
   }, [userId])
 

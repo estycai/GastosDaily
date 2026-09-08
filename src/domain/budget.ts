@@ -1,4 +1,4 @@
-﻿export type CalcMode = 'dynamic' | 'fixed'
+export type CalcMode = 'dynamic' | 'fixed'
 
 export type PaceStatus = 'on-track' | 'over'
 
@@ -7,7 +7,7 @@ export interface DailyAllowanceParams {
   cycleSpentCents: number
   daysRemaining: number
   calcMode: CalcMode
-  totalCycleDays?: number
+  totalCycleDays: number
 }
 
 export interface ProjectAllowanceParams {
@@ -17,7 +17,7 @@ export interface ProjectAllowanceParams {
   cycleSpentCents: number
   calcMode: CalcMode
   additionalExpenseCents: number
-  totalCycleDays?: number
+  totalCycleDays: number
 }
 
 /**
@@ -70,10 +70,10 @@ export function cycleSpentCents(expensesCents: readonly number[]): number {
  * Never returns negative or Infinity. Clamps at zero.
  */
 export function dailyAllowanceCents(params: DailyAllowanceParams): number {
-  const { totalBudgetCents, cycleSpentCents, daysRemaining, calcMode, totalCycleDays = 30 } = params
+  const { totalBudgetCents, cycleSpentCents, daysRemaining, calcMode, totalCycleDays } = params
 
   if (calcMode === 'fixed') {
-    const cycleDays = totalCycleDays > 0 ? totalCycleDays : 30
+    const cycleDays = Math.max(1, Math.round(totalCycleDays))
     const fixedDaily = Math.floor(totalBudgetCents / cycleDays)
     const remainingBudget = Math.max(0, totalBudgetCents - cycleSpentCents)
     return Math.min(fixedDaily, remainingBudget)
@@ -116,14 +116,14 @@ export function projectAllowanceAfter(params: ProjectAllowanceParams): number {
     cycleSpentCents,
     calcMode,
     additionalExpenseCents,
-    totalCycleDays = 30,
+    totalCycleDays,
   } = params
 
   const newCycleSpent = cycleSpentCents + Math.max(0, additionalExpenseCents)
   const remainingBudget = Math.max(0, totalBudgetCents - newCycleSpent)
 
   if (calcMode === 'fixed') {
-    const cycleDays = totalCycleDays > 0 ? totalCycleDays : 30
+    const cycleDays = Math.max(1, Math.round(totalCycleDays))
     const fixedDaily = Math.floor(totalBudgetCents / cycleDays)
     return Math.min(fixedDaily, remainingBudget)
   }

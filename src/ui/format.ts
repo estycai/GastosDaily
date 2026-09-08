@@ -15,18 +15,3 @@ export function formatArs(amountCents: number): string {
   return `$ ${formattedNumber}`
 }
 
-/**
- * Formats a raw pesos amount directly.
- * Example: 10000 pesos -> '$ 10.000'
- */
-export function formatPesos(pesos: number): string {
-  const isNegative = pesos < 0
-  const absPesos = Math.abs(Math.round(pesos))
-  const formattedNumber = absPesos.toLocaleString('es-AR')
-
-  if (isNegative) {
-    return `-$ ${formattedNumber}`
-  }
-  return `$ ${formattedNumber}`
-}
-

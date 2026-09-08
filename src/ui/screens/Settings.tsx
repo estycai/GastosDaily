@@ -12,7 +12,7 @@ export interface SettingsProps {
     budgetCents: number
     closingDate: string
     calcMode: CalcMode
-  }) => void
+  }) => Promise<void> | void
   // API Tokens props
   apiTokens?: ApiTokenEntity[]
   createdTokenPlaintext?: string | null
@@ -43,6 +43,10 @@ export const Settings: React.FC<SettingsProps> = ({
   const [closingDate, setClosingDate] = useState<string>(initialClosingDate)
   const [calcMode, setCalcMode] = useState<CalcMode>(initialCalcMode)
 
+  // Save settings state
+  const [isSaving, setIsSaving] = useState<boolean>(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   // API Token management state
   const [newLabel, setNewLabel] = useState<string>('Apple Shortcut')
   const [isCreatingToken, setIsCreatingToken] = useState<boolean>(false)
@@ -62,13 +66,31 @@ export const Settings: React.FC<SettingsProps> = ({
     setBudgetPesosStr(sanitized)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return
     const pesos = parseInt(budgetPesosStr || '0', 10) || 0
-    onSaveSettings({
-      budgetCents: pesos * 100,
-      closingDate,
-      calcMode,
-    })
+    if (pesos <= 0) {
+      setSaveError('El presupuesto debe ser mayor a 0.')
+      return
+    }
+    if (!closingDate) {
+      setSaveError('Seleccioná una fecha de cierre válida.')
+      return
+    }
+
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      await onSaveSettings({
+        budgetCents: pesos * 100,
+        closingDate,
+        calcMode,
+      })
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Error al guardar los ajustes. Intentá nuevamente.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleCreateToken = async (e: React.FormEvent) => {
@@ -287,13 +309,20 @@ export const Settings: React.FC<SettingsProps> = ({
         </p>
       </section>
 
+      {saveError && (
+        <div className="w-full bg-[#450A0A] border border-[#EF4444]/40 rounded-[14px] p-3 mb-4 text-center">
+          <p className="text-[12px] text-[#EF4444] font-medium">{saveError}</p>
+        </div>
+      )}
+
       {/* Save CTA */}
       <button
         type="button"
+        disabled={isSaving}
         onClick={handleSave}
-        className="w-full h-[52px] bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-[0.99] text-[#FFFFFF] text-[15px] font-bold rounded-[16px] flex items-center justify-center cursor-pointer transition-all shadow-md mb-8"
+        className="w-full h-[52px] bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-[#FFFFFF] text-[15px] font-bold rounded-[16px] flex items-center justify-center cursor-pointer transition-all shadow-md mb-8"
       >
-        GUARDAR CONFIGURACIÓN
+        {isSaving ? 'GUARDANDO...' : 'GUARDAR CONFIGURACIÓN'}
       </button>
 
       {/* Acceso Externo (API Tokens & Apple Shortcut) Section */}

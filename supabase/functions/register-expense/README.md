@@ -1,4 +1,4 @@
-﻿# Register Expense Edge Function
+# Register Expense Edge Function
 
 HTTP endpoint for Apple Shortcuts and external automations to register expenses into Gastos Daily.
 
@@ -99,9 +99,10 @@ All money fields (`dailyAllowance`, `remainingToday`) are returned as numbers in
 
 - `ok`: Boolean `true` indicating the expense was logged.
 - `expenseId`: The UUID of the inserted row in `public.expenses`.
-- `dailyAllowance`: Updated daily allowance in pesos for the remainder of the cycle.
-- `remainingToday`: Remaining money available for today in pesos (`dailyAllowance - spentToday`). Can be negative if today's spending exceeds the daily allowance.
-- `daysRemaining`: Total days remaining in the cycle counting today inclusive through closing date.
+- `dailyAllowance`: Updated daily allowance in pesos for the remainder of the cycle (`null` if summary calculation query fails).
+- `remainingToday`: Remaining money available for today in pesos (`dailyAllowance - spentToday`). Can be negative if today's spending exceeds the daily allowance (`null` if summary calculation query fails).
+- `daysRemaining`: Total days remaining in the cycle counting today inclusive through closing date (`null` if summary calculation query fails).
+- `summaryUnavailable`: Optional boolean (`true`) present only when the expense was successfully committed but the follow-up summary calculation query failed. Once an insert is committed, the function guarantees a `200 OK` (never a 5xx retry trigger).
 
 ### Error Responses
 

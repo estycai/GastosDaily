@@ -1,4 +1,4 @@
-﻿import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -95,6 +95,11 @@ Deno.serve(async (req: Request) => {
       message: 'Only POST method is allowed',
     })
   }
+
+  // Once the expense row is durably written, this request must never report 5xx: a client
+  // like Apple Shortcuts retries on 5xx, and a retry would insert the expense a second time.
+  // Anything that fails afterwards degrades the response, it does not fail the request.
+  let committedExpenseId: string | null = null
 
   try {
     // 2. Authentication: Authorization header with 'Bearer ' prefix
@@ -260,11 +265,17 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    committedExpenseId = newExpense.id
+
     // Update last_used_at on token row
-    await supabase
+    const { error: updateTokenError } = await supabase
       .from('api_tokens')
       .update({ last_used_at: now.toISOString() })
       .eq('id', tokenRow.id)
+
+    if (updateTokenError) {
+      console.error('Failed to update token last_used_at:', updateTokenError.message)
+    }
 
     // 6. Recompute metrics and return 200
     const { data: cycleExpenses, error: expensesError } = await supabase
@@ -274,10 +285,14 @@ Deno.serve(async (req: Request) => {
       .eq('cycle_id', cycleId)
 
     if (expensesError) {
-      console.error('Error querying cycle expenses:', expensesError.message)
-      return jsonResponse(500, {
-        error: 'internal_error',
-        message: 'Failed to calculate updated allowance',
+      console.error('Error querying cycle expenses after insert:', expensesError.message)
+      return jsonResponse(200, {
+        ok: true,
+        expenseId: newExpense.id,
+        dailyAllowance: null,
+        remainingToday: null,
+        daysRemaining: null,
+        summaryUnavailable: true,
       })
     }
 
@@ -301,7 +316,7 @@ Deno.serve(async (req: Request) => {
       const cycleStartMs = parseYmdToUtcTimestamp(cycleRow.start_date || todayStr)
       const cycleEndMs = parseYmdToUtcTimestamp(cycleRow.end_date)
       const computedCycleDays = Math.round((cycleEndMs - cycleStartMs) / (1000 * 60 * 60 * 24)) + 1
-      const totalCycleDays = computedCycleDays > 0 ? computedCycleDays : 30
+      const totalCycleDays = computedCycleDays > 0 ? computedCycleDays : 1
       const fixedDaily = Math.floor(totalBudgetCents / totalCycleDays)
       const remainingBudget = Math.max(0, totalBudgetCents - cycleSpentCents)
       dailyAllowanceCents = Math.min(fixedDaily, remainingBudget)
@@ -330,6 +345,20 @@ Deno.serve(async (req: Request) => {
     })
   } catch (err: unknown) {
     console.error('Unhandled error in register-expense handler:', err)
+
+    // The expense is already in the database. Reporting failure here would invite a retry
+    // and duplicate the user's money, so acknowledge the write and drop only the summary.
+    if (committedExpenseId !== null) {
+      return jsonResponse(200, {
+        ok: true,
+        expenseId: committedExpenseId,
+        dailyAllowance: null,
+        remainingToday: null,
+        daysRemaining: null,
+        summaryUnavailable: true,
+      })
+    }
+
     return jsonResponse(500, {
       error: 'internal_error',
       message: 'Internal server error',

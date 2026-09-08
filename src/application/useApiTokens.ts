@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   listApiTokens as listApiTokensInfra,
   createApiToken as createApiTokenInfra,
@@ -26,11 +26,24 @@ export function useApiTokens(userId: string | null): UseApiTokensReturn {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<Error | null>(null)
   const [createdTokenPlaintext, setCreatedTokenPlaintext] = useState<string | null>(null)
+  const fetchRequestIdRef = useRef<number>(0)
+  const isMountedRef = useRef<boolean>(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const fetchTokens = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current
+
     if (!userId) {
-      setTokens([])
-      setLoading(false)
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setTokens([])
+        setLoading(false)
+      }
       return
     }
 
@@ -38,11 +51,17 @@ export function useApiTokens(userId: string | null): UseApiTokensReturn {
     setError(null)
     try {
       const list = await listApiTokensInfra(userId)
-      setTokens(list)
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setTokens(list)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)))
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setError(err instanceof Error ? err : new Error(String(err)))
+      }
     } finally {
-      setLoading(false)
+      if (isMountedRef.current && requestId === fetchRequestIdRef.current) {
+        setLoading(false)
+      }
     }
   }, [userId])
 

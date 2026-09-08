@@ -2,20 +2,7 @@ import React, { useState } from 'react'
 import { formatArs } from '../format.ts'
 import { projectAllowanceAfter } from '../../domain/budget.ts'
 import type { CalcMode } from '../../domain/budget.ts'
-
-export interface QuickCategory {
-  id: string
-  label: string
-  emoji: string
-  color?: string
-}
-
-export const DEFAULT_QUICK_CATEGORIES: QuickCategory[] = [
-  { id: 'comida', label: 'Comida', emoji: '🍔' },
-  { id: 'super', label: 'Súper', emoji: '🛒' },
-  { id: 'viaje', label: 'Viaje', emoji: '🚗' },
-  { id: 'varios', label: 'Varios', emoji: '🛍️' },
-]
+import { CATEGORIES } from '../../domain/categories.ts'
 
 export interface RegisterExpenseProps {
   currentDailyAllowanceCents: number
@@ -23,13 +10,13 @@ export interface RegisterExpenseProps {
   totalBudgetCents: number
   cycleSpentCents: number
   calcMode: CalcMode
+  totalCycleDays: number
   onClose: () => void
   onConfirmExpense: (expense: {
     amountCents: number
     concept: string
     category: string
-    categoryEmoji: string
-  }) => void
+  }) => Promise<void>
 }
 
 export const RegisterExpense: React.FC<RegisterExpenseProps> = ({
@@ -38,12 +25,15 @@ export const RegisterExpense: React.FC<RegisterExpenseProps> = ({
   totalBudgetCents,
   cycleSpentCents,
   calcMode,
+  totalCycleDays,
   onClose,
   onConfirmExpense,
 }) => {
-  const [amountStr, setAmountStr] = useState<string>('4500')
-  const [concept, setConcept] = useState<string>('Almuerzo en el trabajo')
-  const [selectedCategory, setSelectedCategory] = useState<string>('comida')
+  const [amountStr, setAmountStr] = useState<string>('0')
+  const [concept, setConcept] = useState<string>('')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const parsedAmountPesos = parseInt(amountStr || '0', 10) || 0
   const expenseAmountCents = parsedAmountPesos * 100
@@ -61,6 +51,7 @@ export const RegisterExpense: React.FC<RegisterExpenseProps> = ({
     cycleSpentCents,
     calcMode,
     additionalExpenseCents: expenseAmountCents,
+    totalCycleDays,
   })
 
   const handleDigit = (digit: string) => {
@@ -81,15 +72,24 @@ export const RegisterExpense: React.FC<RegisterExpenseProps> = ({
     }
   }
 
-  const handleConfirm = () => {
-    if (expenseAmountCents <= 0) return
-    const cat = DEFAULT_QUICK_CATEGORIES.find((c) => c.id === selectedCategory) || DEFAULT_QUICK_CATEGORIES[0]
-    onConfirmExpense({
-      amountCents: expenseAmountCents,
-      concept: concept.trim() || cat.label,
-      category: cat.id,
-      categoryEmoji: cat.emoji,
-    })
+  const handleConfirm = async () => {
+    if (expenseAmountCents <= 0 || isSubmitting) return
+    const chosenCat = CATEGORIES.find((c) => c.id === selectedCategory)
+    const catId = chosenCat?.id || 'varios'
+    const fallbackConcept = chosenCat?.label || 'Varios'
+
+    setIsSubmitting(true)
+    setSubmitError(null)
+    try {
+      await onConfirmExpense({
+        amountCents: expenseAmountCents,
+        concept: concept.trim() || fallbackConcept,
+        category: catId,
+      })
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'No se pudo registrar el gasto. Intentá nuevamente.')
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -165,13 +165,13 @@ export const RegisterExpense: React.FC<RegisterExpenseProps> = ({
           Categoría rápida
         </span>
         <div className="grid grid-cols-4 gap-2 w-full">
-          {DEFAULT_QUICK_CATEGORIES.map((cat) => {
+          {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.id
             return (
               <button
                 key={cat.id}
                 type="button"
-                onClick={() => setSelectedCategory(cat.id)}
+                onClick={() => setSelectedCategory(isSelected ? null : cat.id)}
                 className={`h-[38px] rounded-[12px] flex items-center justify-center px-2 cursor-pointer transition-colors text-[12px] whitespace-nowrap ${
                   isSelected
                     ? 'bg-[#2563EB] text-[#FFFFFF] font-bold'
@@ -241,14 +241,20 @@ export const RegisterExpense: React.FC<RegisterExpenseProps> = ({
         </div>
       </section>
 
+      {submitError && (
+        <div className="w-full bg-[#450A0A] border border-[#EF4444]/40 rounded-[14px] p-3 mb-3 text-center">
+          <p className="text-[12px] text-[#EF4444] font-medium">{submitError}</p>
+        </div>
+      )}
+
       {/* Confirm CTA */}
       <button
         type="button"
-        disabled={expenseAmountCents <= 0}
+        disabled={expenseAmountCents <= 0 || isSubmitting}
         onClick={handleConfirm}
         className="w-full h-[52px] bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-[#FFFFFF] text-[15px] font-bold rounded-[16px] flex items-center justify-center cursor-pointer transition-all shadow-md"
       >
-        CONFIRMAR GASTO
+        {isSubmitting ? 'REGISTRANDO...' : 'CONFIRMAR GASTO'}
       </button>
     </div>
   )
