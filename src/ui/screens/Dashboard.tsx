@@ -1,0 +1,219 @@
+import React from 'react'
+import { formatArs } from '../format.ts'
+import type { PaceStatus } from '../../domain/budget.ts'
+
+export interface ExpenseItem {
+  id: string
+  concept: string
+  amountCents: number
+  categoryEmoji: string
+  iconBgColor?: string
+  dateLabel: string
+}
+
+export interface DashboardProps {
+  dailyAllowanceCents: number
+  paceStatus: PaceStatus
+  cycleDaysRemaining: number
+  cycleClosingDateLabel: string
+  cycleRemainingCents: number
+  totalBudgetCents: number
+  periodSpentPercent: number
+  todayExpenses: ExpenseItem[]
+  todayTotalSpentCents: number
+  todayDateLabel: string
+  onOpenRegisterExpense: () => void
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({
+  dailyAllowanceCents,
+  paceStatus,
+  cycleDaysRemaining,
+  cycleClosingDateLabel,
+  cycleRemainingCents,
+  totalBudgetCents,
+  periodSpentPercent,
+  todayExpenses,
+  todayTotalSpentCents,
+  todayDateLabel,
+  onOpenRegisterExpense,
+}) => {
+  const progressClamped = Math.max(0, Math.min(100, periodSpentPercent))
+
+  let progressColor = '#34D399'
+  let progressTextColor = '#34D399'
+  if (progressClamped >= 80) {
+    progressColor = '#EF4444'
+    progressTextColor = '#EF4444'
+  } else if (progressClamped >= 50) {
+    progressColor = '#F59E0B'
+    progressTextColor = '#F59E0B'
+  }
+
+  return (
+    <div className="flex flex-col w-full px-5 pt-3 pb-24 text-[#F8FAFC]">
+      {/* Status Bar */}
+      <div className="flex justify-between items-center w-full text-[14px] text-[#FFFFFF] font-bold mb-4 px-3">
+        <span>9:41</span>
+        <span className="text-[12px] font-normal text-[#94A3B8]">100%</span>
+      </div>
+
+      {/* Screen Header */}
+      <header className="flex justify-between items-center w-full mb-5">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] leading-[14px]">
+            CICLO EN CURSO
+          </div>
+          <h1 className="text-[22px] font-bold text-[#FFFFFF] leading-[27px] mt-0.5">
+            Gastos Daily
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-2 bg-[#1E293B] px-3 py-1.5 rounded-[15px] h-[30px]">
+          <div className="w-2 h-2 rounded-full bg-[#10B981] shrink-0" />
+          <span className="text-[12px] font-medium leading-[15px] text-[#38BDF8]">
+            Cierra en {cycleDaysRemaining} d
+          </span>
+        </div>
+      </header>
+
+      {/* Hero Card: PODES GASTAR HOY */}
+      <section className="w-full bg-[#131B2E] border border-[#1E293B] rounded-[24px] p-5 mb-4 shadow-sm">
+        <div className="text-[11px] font-bold text-[#60A5FA] tracking-wider leading-[14px]">
+          PODÉS GASTAR HOY
+        </div>
+        <div className="text-[42px] font-bold text-[#FFFFFF] leading-[51px] my-3">
+          {formatArs(dailyAllowanceCents)}
+        </div>
+
+        {paceStatus === 'on-track' ? (
+          <div className="inline-flex items-center bg-[#064E3B] px-3 py-1.5 rounded-[14px] h-[28px]">
+            <span className="text-[11px] font-medium leading-[14px] text-[#34D399]">
+              ✓ Dentro del ritmo planeado
+            </span>
+          </div>
+        ) : (
+          <div className="inline-flex items-center bg-[#451A03] px-3 py-1.5 rounded-[14px] h-[28px]">
+            <span className="text-[11px] font-medium leading-[14px] text-[#F59E0B]">
+              ⚠️ Superaste el límite sugerido hoy
+            </span>
+          </div>
+        )}
+      </section>
+
+      {/* KPI Cards: Dias Restantes & Disponible Total */}
+      <section className="grid grid-cols-2 gap-3 w-full mb-4">
+        {/* Card Días Restantes */}
+        <div className="bg-[#111827] border border-[#1E293B] rounded-[18px] p-3.5 h-[84px] flex flex-col justify-between">
+          <span className="text-[11px] leading-[14px] text-[#64748B]">
+            Días Restantes
+          </span>
+          <span className="text-[20px] font-bold leading-[24px] text-[#F1F5F9]">
+            {cycleDaysRemaining} días
+          </span>
+          <span className="text-[10px] leading-[12px] text-[#475569]">
+            Cierre: {cycleClosingDateLabel}
+          </span>
+        </div>
+
+        {/* Card Disponible Total */}
+        <div className="bg-[#111827] border border-[#1E293B] rounded-[18px] p-3.5 h-[84px] flex flex-col justify-between">
+          <span className="text-[11px] leading-[14px] text-[#64748B]">
+            Disponible Total
+          </span>
+          <span className="text-[20px] font-bold leading-[24px] text-[#F1F5F9]">
+            {formatArs(cycleRemainingCents)}
+          </span>
+          <span className="text-[10px] leading-[12px] text-[#475569]">
+            de {formatArs(totalBudgetCents)} límite
+          </span>
+        </div>
+      </section>
+
+      {/* Progress Bar Card: Consumo del Periodo */}
+      <section className="w-full bg-[#111827] border border-[#1E293B] rounded-[18px] p-4 mb-4">
+        <div className="flex justify-between items-center mb-2.5">
+          <span className="text-[12px] font-medium leading-[15px] text-[#94A3B8]">
+            Consumo del Periodo
+          </span>
+          <span
+            className="text-[12px] font-bold leading-[15px]"
+            style={{ color: progressTextColor }}
+          >
+            {Math.round(progressClamped)}% usado
+          </span>
+        </div>
+
+        <div className="w-full h-2 bg-[#1F2937] rounded-[4px] overflow-hidden">
+          <div
+            className="h-full rounded-[4px] transition-all duration-300"
+            style={{
+              width: `${progressClamped}%`,
+              backgroundColor: progressColor,
+            }}
+          />
+        </div>
+      </section>
+
+      {/* Primary CTA: + REGISTRAR GASTO HOY */}
+      <button
+        type="button"
+        onClick={onOpenRegisterExpense}
+        className="w-full h-[52px] bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-[0.99] text-[#FFFFFF] text-[15px] font-bold rounded-[16px] flex items-center justify-center cursor-pointer transition-all shadow-md mb-6"
+      >
+        + REGISTRAR GASTO HOY
+      </button>
+
+      {/* Expense Feed */}
+      <section className="w-full">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-[13px] font-bold leading-[16px] text-[#94A3B8]">
+            Gastos de hoy ({todayDateLabel})
+          </span>
+          <span className="text-[12px] leading-[15px] text-[#64748B]">
+            Total: {formatArs(-todayTotalSpentCents)}
+          </span>
+        </div>
+
+        {todayExpenses.length === 0 ? (
+          <div className="bg-[#111827] border border-[#1E293B] rounded-[16px] p-6 text-center text-[#64748B] text-[13px]">
+            No registraste gastos hoy todavía.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {todayExpenses.map((expense) => (
+              <div
+                key={expense.id}
+                className="w-full h-[64px] bg-[#111827] border border-[#1E293B] rounded-[16px] px-3.5 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-[38px] h-[38px] rounded-[12px] flex items-center justify-center shrink-0 text-[18px]"
+                    style={{
+                      backgroundColor: expense.iconBgColor || '#1E1B4B',
+                    }}
+                  >
+                    <span>{expense.categoryEmoji}</span>
+                  </div>
+
+                  <div className="flex flex-col justify-center">
+                    <span className="text-[14px] font-normal leading-[17px] text-[#F8FAFC] line-clamp-1">
+                      {expense.concept}
+                    </span>
+                    <span className="text-[11px] leading-[14px] text-[#64748B]">
+                      {expense.dateLabel}
+                    </span>
+                  </div>
+                </div>
+
+                <span className="text-[15px] font-bold leading-[18px] text-[#EF4444] shrink-0">
+                  {formatArs(-expense.amountCents)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
