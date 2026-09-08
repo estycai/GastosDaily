@@ -1,6 +1,6 @@
-﻿import React from 'react'
+import React from 'react'
 import { formatArs } from '../format.ts'
-import type { PaceStatus } from '../../domain/budget.ts'
+import { remainingTodayCents, type PaceStatus } from '../../domain/budget.ts'
 
 export interface DailyAllowanceCardProps {
   dailyAllowanceCents: number
@@ -11,17 +11,38 @@ export interface DailyAllowanceCardProps {
 
 export const DailyAllowanceCard: React.FC<DailyAllowanceCardProps> = ({
   dailyAllowanceCents,
-  totalBudgetCents: _totalBudgetCents,
+  totalBudgetCents,
   paceStatus,
-  todaySpentCents: _todaySpentCents,
+  todaySpentCents,
 }) => {
+  const remainingToday = remainingTodayCents(dailyAllowanceCents, todaySpentCents)
+  const isOverspent = remainingToday < 0
+  const hasSpentToday = todaySpentCents > 0
+
   return (
     <section className="w-full bg-[#131B2E] border border-[#1E293B] rounded-[24px] p-5 mb-4 shadow-sm">
       <div className="text-[11px] font-bold text-[#60A5FA] tracking-wider leading-[14px]">
-        PODÉS GASTAR HOY
+        Te quedan por gastar hoy
       </div>
-      <div className="text-[42px] font-bold text-[#FFFFFF] leading-[51px] my-3">
-        {formatArs(dailyAllowanceCents)}
+      <div className="flex items-baseline justify-between my-3">
+        <div
+          className={`text-[42px] font-bold leading-[51px] ${
+            isOverspent ? 'text-[#EF4444]' : 'text-[#FFFFFF]'
+          }`}
+        >
+          {formatArs(remainingToday)}
+        </div>
+        <div className="text-[14px] font-normal leading-[18px]">
+          {hasSpentToday ? (
+            <span className="text-[#EF4444] font-medium">
+              {formatArs(-todaySpentCents)}
+            </span>
+          ) : (
+            <span className="text-[#94A3B8]">
+              de {formatArs(totalBudgetCents)}
+            </span>
+          )}
+        </div>
       </div>
 
       {paceStatus === 'on-track' ? (

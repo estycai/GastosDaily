@@ -142,3 +142,16 @@ export function projectAllowanceAfter(params: ProjectAllowanceParams): number {
 
   return Math.floor(remainingBudget / futureDays)
 }
+
+/**
+ * Calculates remaining allowance for today in integer cents.
+ * remainingToday = dailyAllowance - spentToday
+ * May be negative if today's spend exceeds the daily allowance.
+ * Do not clamp at zero (documented exception to the clamp-at-zero rule).
+ */
+export function remainingTodayCents(
+  dailyAllowanceCents: number,
+  todaySpentCents: number
+): number {
+  return Math.round(dailyAllowanceCents) - Math.round(todaySpentCents)
+}

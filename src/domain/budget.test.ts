@@ -5,6 +5,7 @@ import {
   daysRemaining,
   paceStatus,
   projectAllowanceAfter,
+  remainingTodayCents,
 } from './budget.ts'
 
 describe('daysRemaining', () => {
@@ -366,4 +367,35 @@ describe('domain and edge function calculation parity', () => {
       expect(domainResult).toBe(edgeResult)
     })
   }
+})
+
+describe('remainingTodayCents', () => {
+  it('returns positive remaining allowance when todaySpent is less than daily allowance', () => {
+    // 10.000 allowance (1,000,000 cents), 3.500 spent (350,000 cents) -> 6.500 remaining (650,000 cents)
+    expect(remainingTodayCents(1000000, 350000)).toBe(650000)
+  })
+
+  it('handles zero-spend case correctly returning the full daily allowance', () => {
+    // Fresh day: 10.000 allowance, 0 spent -> 10.000 remaining
+    expect(remainingTodayCents(1000000, 0)).toBe(1000000)
+  })
+
+  it('handles exactly-equal case returning 0', () => {
+    // 10.000 allowance, 10.000 spent -> 0 remaining
+    expect(remainingTodayCents(1000000, 1000000)).toBe(0)
+  })
+
+  it('handles negative case without clamping when today spent exceeds daily allowance', () => {
+    // 10.000 allowance (1,000,000 cents), 12.300 spent (1,230,000 cents) -> -2.300 (-230,000 cents)
+    expect(remainingTodayCents(1000000, 1230000)).toBe(-230000)
+  })
+
+  it('handles zero daily allowance with positive spent resulting in negative remaining', () => {
+    // 0 allowance, 5.000 spent -> -5.000 (-500,000 cents)
+    expect(remainingTodayCents(0, 500000)).toBe(-500000)
+  })
+
+  it('rounds floating-point cents safely to integers', () => {
+    expect(remainingTodayCents(10000.4, 3000.2)).toBe(7000)
+  })
 })
