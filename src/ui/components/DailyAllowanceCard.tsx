@@ -4,14 +4,12 @@ import { remainingTodayCents, type PaceStatus } from '../../domain/budget.ts'
 
 export interface DailyAllowanceCardProps {
   dailyAllowanceCents: number
-  totalBudgetCents: number
   paceStatus: PaceStatus
   todaySpentCents: number
 }
 
 export const DailyAllowanceCard: React.FC<DailyAllowanceCardProps> = ({
   dailyAllowanceCents,
-  totalBudgetCents,
   paceStatus,
   todaySpentCents,
 }) => {
@@ -32,16 +30,19 @@ export const DailyAllowanceCard: React.FC<DailyAllowanceCardProps> = ({
         >
           {formatArs(remainingToday)}
         </div>
-        <div className="text-[14px] font-normal leading-[18px]">
-          {hasSpentToday ? (
+        {/*
+          The grey figure is the day's own allowance and is always present. Without it the
+          headline becomes unreadable once spending starts: someone seeing "$ 14.583" has no
+          way to tell whether the day began at 21k or at 15k. It used to show the cycle
+          budget, which answered a question the daily card was never asking.
+        */}
+        <div className="flex flex-col items-end text-[14px] font-normal leading-[18px]">
+          {hasSpentToday && (
             <span className="text-[#EF4444] font-medium">
               {formatArs(-todaySpentCents)}
             </span>
-          ) : (
-            <span className="text-[#94A3B8]">
-              de {formatArs(totalBudgetCents)}
-            </span>
           )}
+          <span className="text-[#94A3B8]">de {formatArs(dailyAllowanceCents)}</span>
         </div>
       </div>
 

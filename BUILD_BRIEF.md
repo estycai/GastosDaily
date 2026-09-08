@@ -116,9 +116,14 @@ remainingToday = dailyAllowance - spentToday
 ```
 
 - The label reads **"Te quedan por gastar hoy"**.
-- When `spentToday > 0`, the slot to the right of the amount shows today's spend as a negative
-  figure (`-$ 6.500`) instead of the cycle total. When `spentToday == 0` the card keeps its
-  previous appearance, so a fresh day looks exactly as it did before.
+- The slot to the right of the amount always ends with the **day's own allowance** in grey
+  (`de $ 21.083`). It must never be replaced or hidden: the headline is meaningless without
+  it, because someone reading `$ 14.583` cannot otherwise tell whether the day started at
+  21k or at 15k. It previously showed the cycle budget, which answered a question the daily
+  card was not asking.
+- When `spentToday > 0`, today's spend appears **above** that grey figure as a negative
+  amount (`-$ 6.500`), stacked and right-aligned. When `spentToday == 0` only the grey
+  allowance shows.
 - `remainingToday` may go **negative** and must be shown as such — an overspent day is
   information the user needs, not an error to hide. This is the one deliberate exception to
   the clamp-at-zero rule above, which still applies to `dailyAllowance` itself.

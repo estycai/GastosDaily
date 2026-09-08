@@ -70,10 +70,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </header>
 
-      {/* Hero Card: PODES GASTAR HOY */}
+      {/* Hero Card: what is left to spend today */}
       <DailyAllowanceCard
         dailyAllowanceCents={dailyAllowanceCents}
-        totalBudgetCents={totalBudgetCents}
         paceStatus={paceStatus}
         todaySpentCents={todaySpentCents}
       />
