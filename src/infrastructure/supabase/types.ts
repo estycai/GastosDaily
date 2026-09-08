@@ -1,3 +1,8 @@
+// Database shape for the provisioned Supabase project (ref vsniofvjuminnkjladdi).
+// Mirrors `supabase gen types typescript`. The `__InternalSupabase` marker and the
+// per-table `Relationships` key are required: without them supabase-js cannot resolve
+// the schema and collapses every insert/update argument to `never`.
+
 export type Json =
   | string
   | number
@@ -6,91 +11,120 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type CalcMode = 'dynamic' | 'fixed';
-
-export interface CycleRow {
-  id: string;
-  user_id: string;
-  total_budget: number;
-  start_date: string;
-  end_date: string;
-  calc_mode: CalcMode;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface CycleInsert {
-  id?: string;
-  user_id: string;
-  total_budget: number;
-  start_date?: string;
-  end_date: string;
-  calc_mode?: CalcMode;
-  is_active?: boolean;
-  created_at?: string;
-}
-
-export interface CycleUpdate {
-  id?: string;
-  user_id?: string;
-  total_budget?: number;
-  start_date?: string;
-  end_date?: string;
-  calc_mode?: CalcMode;
-  is_active?: boolean;
-  created_at?: string;
-}
-
-export interface ExpenseRow {
-  id: string;
-  cycle_id: string;
-  user_id: string;
-  amount: number;
-  concept: string | null;
-  category: string;
-  expense_date: string;
-  created_at: string;
-}
-
-export interface ExpenseInsert {
-  id?: string;
-  cycle_id: string;
-  user_id: string;
-  amount: number;
-  concept?: string | null;
-  category?: string;
-  expense_date?: string;
-  created_at?: string;
-}
-
-export interface ExpenseUpdate {
-  id?: string;
-  cycle_id?: string;
-  user_id?: string;
-  amount?: number;
-  concept?: string | null;
-  category?: string;
-  expense_date?: string;
-  created_at?: string;
-}
-
-export interface Database {
+export type Database = {
+  __InternalSupabase: {
+    PostgrestVersion: '14.5';
+  };
   public: {
     Tables: {
       cycles: {
-        Row: CycleRow;
-        Insert: CycleInsert;
-        Update: CycleUpdate;
+        Row: {
+          calc_mode: string;
+          created_at: string;
+          end_date: string;
+          id: string;
+          is_active: boolean;
+          start_date: string;
+          total_budget: number;
+          user_id: string;
+        };
+        Insert: {
+          calc_mode?: string;
+          created_at?: string;
+          end_date: string;
+          id?: string;
+          is_active?: boolean;
+          start_date?: string;
+          total_budget: number;
+          user_id: string;
+        };
+        Update: {
+          calc_mode?: string;
+          created_at?: string;
+          end_date?: string;
+          id?: string;
+          is_active?: boolean;
+          start_date?: string;
+          total_budget?: number;
+          user_id?: string;
+        };
+        Relationships: [];
       };
       expenses: {
-        Row: ExpenseRow;
-        Insert: ExpenseInsert;
-        Update: ExpenseUpdate;
+        Row: {
+          amount: number;
+          category: string;
+          concept: string | null;
+          created_at: string;
+          cycle_id: string;
+          expense_date: string;
+          id: string;
+          user_id: string;
+        };
+        Insert: {
+          amount: number;
+          category?: string;
+          concept?: string | null;
+          created_at?: string;
+          cycle_id: string;
+          expense_date?: string;
+          id?: string;
+          user_id: string;
+        };
+        Update: {
+          amount?: number;
+          category?: string;
+          concept?: string | null;
+          created_at?: string;
+          cycle_id?: string;
+          expense_date?: string;
+          id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'expenses_cycle_id_fkey';
+            columns: ['cycle_id'];
+            isOneToOne: false;
+            referencedRelation: 'cycles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
-}
+};
+
+type PublicTables = Database['public']['Tables'];
+
+/**
+ * `calc_mode` is a text column guarded by a CHECK constraint, so Postgres reports it as
+ * `string`. This narrows it back to the two values the constraint actually allows.
+ */
+export type CalcMode = 'dynamic' | 'fixed';
+
+export type CycleRow = Omit<PublicTables['cycles']['Row'], 'calc_mode'> & {
+  calc_mode: CalcMode;
+};
+export type CycleInsert = Omit<PublicTables['cycles']['Insert'], 'calc_mode'> & {
+  calc_mode?: CalcMode;
+};
+export type CycleUpdate = Omit<PublicTables['cycles']['Update'], 'calc_mode'> & {
+  calc_mode?: CalcMode;
+};
+
+export type ExpenseRow = PublicTables['expenses']['Row'];
+export type ExpenseInsert = PublicTables['expenses']['Insert'];
+export type ExpenseUpdate = PublicTables['expenses']['Update'];
