@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Dashboard, type ExpenseItem } from './ui/screens/Dashboard.tsx'
 import { RegisterExpense } from './ui/screens/RegisterExpense.tsx'
+import { History } from './ui/screens/History.tsx'
 import { Settings } from './ui/screens/Settings.tsx'
 import { Login } from './ui/screens/Login.tsx'
 import { BottomNav, type TabType } from './ui/components/BottomNav.tsx'
@@ -9,9 +10,7 @@ import {
   dailyAllowanceCents,
   paceStatus,
   cycleSpentCents,
-  cycleLengthDays,
   CATEGORY_MAP,
-  type CalcMode,
 } from './domain/index.ts'
 import {
   useSession,
@@ -90,16 +89,9 @@ export function App() {
     })
   }, [rawTodayExpenses])
 
-  // Total budget, dates and totalCycleDays from activeCycle
+  // Total budget and dates from activeCycle
   const totalBudgetCents = activeCycle?.totalBudgetCents ?? 0
   const closingDate = activeCycle?.endDate ?? todayStr
-  const startDate = activeCycle?.startDate ?? todayStr
-  const calcMode: CalcMode = activeCycle?.calcMode ?? 'dynamic'
-
-  const totalCycleDays = useMemo(() => {
-    if (!activeCycle) return 30
-    return cycleLengthDays(startDate, closingDate)
-  }, [activeCycle, startDate, closingDate])
 
   // Days remaining (today inclusive through end date)
   const daysLeft = useMemo(() => {
@@ -121,10 +113,8 @@ export function App() {
       totalBudgetCents,
       cycleSpentCents: totalCycleSpent,
       daysRemaining: daysLeft,
-      calcMode,
-      totalCycleDays,
     })
-  }, [totalBudgetCents, totalCycleSpent, daysLeft, calcMode, activeCycle, totalCycleDays])
+  }, [totalBudgetCents, totalCycleSpent, daysLeft, activeCycle])
 
   // Spent today in cents
   const todaySpentTotal = useMemo(() => {
@@ -158,19 +148,16 @@ export function App() {
   const handleSaveSettings = async (newSettings: {
     budgetCents: number
     closingDate: string
-    calcMode: CalcMode
   }) => {
     if (activeCycle) {
       await updateCycle(activeCycle.id, {
         totalBudgetCents: newSettings.budgetCents,
         endDate: newSettings.closingDate,
-        calcMode: newSettings.calcMode,
       })
     } else {
       await createCycle({
         totalBudgetCents: newSettings.budgetCents,
         endDate: newSettings.closingDate,
-        calcMode: newSettings.calcMode,
         startDate: todayStr,
         isActive: true,
       })
@@ -253,7 +240,6 @@ export function App() {
         <Settings
           initialBudgetCents={30000000}
           initialClosingDate={todayStr}
-          initialCalcMode="dynamic"
           onSaveSettings={handleSaveSettings}
           apiTokens={apiTokens}
           createdTokenPlaintext={createdTokenPlaintext}
@@ -276,12 +262,16 @@ export function App() {
           onClose={() => setIsRegisterOpen(false)}
           onConfirmExpense={handleRegisterExpense}
         />
+      ) : currentTab === 'historial' ? (
+        <>
+          <History userId={userId} />
+          <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
+        </>
       ) : currentTab === 'ajustes' ? (
         <>
           <Settings
             initialBudgetCents={totalBudgetCents}
             initialClosingDate={closingDate}
-            initialCalcMode={calcMode}
             onSaveSettings={handleSaveSettings}
             apiTokens={apiTokens}
             createdTokenPlaintext={createdTokenPlaintext}

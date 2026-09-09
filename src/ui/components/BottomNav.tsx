@@ -31,23 +31,23 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
         </span>
       </button>
 
-      {/* Historial Tab - VISIBLE BUT DISABLED */}
-      <div className="relative group">
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          className="flex flex-col items-center justify-center gap-1 w-20 py-2 opacity-50 cursor-not-allowed"
+      {/* Historial Tab */}
+      <button
+        type="button"
+        onClick={() => onSelectTab('historial')}
+        className="flex flex-col items-center justify-center gap-1 w-20 py-2 cursor-pointer transition-colors"
+      >
+        <span className="text-[18px] leading-[22px]">📅</span>
+        <span
+          className={`text-[11px] leading-[14px] ${
+            currentTab === 'historial'
+              ? 'font-bold text-[#3B82F6]'
+              : 'font-normal text-[#64748B]'
+          }`}
         >
-          <span className="text-[18px] leading-[22px]">📅</span>
-          <span className="text-[11px] leading-[14px] text-[#64748B]">
-            Historial
-          </span>
-        </button>
-        <span className="absolute -top-1 left-1/2 -translate-x-1/2 bg-[#1E293B] text-[#94A3B8] text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap pointer-events-none border border-[#334155]">
-          Próximamente
+          Historial
         </span>
-      </div>
+      </button>
 
       {/* Ajustes Tab */}
       <button
