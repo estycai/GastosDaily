@@ -312,21 +312,10 @@ Deno.serve(async (req: Request) => {
     const daysLeft = computeDaysRemaining(todayStr, cycleRow.end_date)
 
     let dailyAllowanceCents = 0
-    if (cycleRow.calc_mode === 'fixed') {
-      const cycleStartMs = parseYmdToUtcTimestamp(cycleRow.start_date || todayStr)
-      const cycleEndMs = parseYmdToUtcTimestamp(cycleRow.end_date)
-      const computedCycleDays = Math.round((cycleEndMs - cycleStartMs) / (1000 * 60 * 60 * 24)) + 1
-      const totalCycleDays = computedCycleDays > 0 ? computedCycleDays : 1
-      const fixedDaily = Math.floor(totalBudgetCents / totalCycleDays)
-      const remainingBudget = Math.max(0, totalBudgetCents - cycleSpentCents)
-      dailyAllowanceCents = Math.min(fixedDaily, remainingBudget)
-    } else {
-      // Dynamic mode
-      if (daysLeft > 0) {
-        const remainingBudget = totalBudgetCents - cycleSpentCents
-        if (remainingBudget > 0) {
-          dailyAllowanceCents = Math.floor(remainingBudget / daysLeft)
-        }
+    if (daysLeft > 0) {
+      const remainingBudget = totalBudgetCents - cycleSpentCents
+      if (remainingBudget > 0) {
+        dailyAllowanceCents = Math.floor(remainingBudget / daysLeft)
       }
     }
 

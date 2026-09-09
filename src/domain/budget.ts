@@ -1,13 +1,9 @@
-export type CalcMode = 'dynamic' | 'fixed'
-
 export type PaceStatus = 'on-track' | 'over'
 
 export interface DailyAllowanceParams {
   totalBudgetCents: number
   cycleSpentCents: number
   daysRemaining: number
-  calcMode: CalcMode
-  totalCycleDays: number
 }
 
 export interface ProjectAllowanceParams {
@@ -15,9 +11,7 @@ export interface ProjectAllowanceParams {
   daysRemaining: number
   totalBudgetCents: number
   cycleSpentCents: number
-  calcMode: CalcMode
   additionalExpenseCents: number
-  totalCycleDays: number
 }
 
 /**
@@ -70,14 +64,7 @@ export function cycleSpentCents(expensesCents: readonly number[]): number {
  * Never returns negative or Infinity. Clamps at zero.
  */
 export function dailyAllowanceCents(params: DailyAllowanceParams): number {
-  const { totalBudgetCents, cycleSpentCents, daysRemaining, calcMode, totalCycleDays } = params
-
-  if (calcMode === 'fixed') {
-    const cycleDays = Math.max(1, Math.round(totalCycleDays))
-    const fixedDaily = Math.floor(totalBudgetCents / cycleDays)
-    const remainingBudget = Math.max(0, totalBudgetCents - cycleSpentCents)
-    return Math.min(fixedDaily, remainingBudget)
-  }
+  const { totalBudgetCents, cycleSpentCents, daysRemaining } = params
 
   // Dynamic mode:
   // dailyAllowance = (totalBudget - sumOfCycleExpenses) / daysRemaining
@@ -114,19 +101,11 @@ export function projectAllowanceAfter(params: ProjectAllowanceParams): number {
     daysRemaining,
     totalBudgetCents,
     cycleSpentCents,
-    calcMode,
     additionalExpenseCents,
-    totalCycleDays,
   } = params
 
   const newCycleSpent = cycleSpentCents + Math.max(0, additionalExpenseCents)
   const remainingBudget = Math.max(0, totalBudgetCents - newCycleSpent)
-
-  if (calcMode === 'fixed') {
-    const cycleDays = Math.max(1, Math.round(totalCycleDays))
-    const fixedDaily = Math.floor(totalBudgetCents / cycleDays)
-    return Math.min(fixedDaily, remainingBudget)
-  }
 
   // Dynamic mode:
   // After today's expense, future daily allowance across the remaining future days (daysRemaining - 1):

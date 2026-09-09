@@ -110,7 +110,6 @@ export function useCycle(userId: string | null): UseCycleReturn {
           ...(params.totalBudgetCents !== undefined && { totalBudgetCents: params.totalBudgetCents }),
           ...(params.startDate !== undefined && { startDate: params.startDate }),
           ...(params.endDate !== undefined && { endDate: params.endDate }),
-          ...(params.calcMode !== undefined && { calcMode: params.calcMode }),
           ...(params.isActive !== undefined && { isActive: params.isActive }),
         })
       }

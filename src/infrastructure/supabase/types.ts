@@ -80,6 +80,47 @@ export type Database = {
         };
         Relationships: [];
       };
+      cycle_days: {
+        Row: {
+          allowance_cents: number;
+          cycle_id: string;
+          day: string;
+          id: string;
+          saved_cents: number;
+          sealed_at: string;
+          spent_cents: number;
+          user_id: string;
+        };
+        Insert: {
+          allowance_cents: number;
+          cycle_id: string;
+          day: string;
+          id?: string;
+          saved_cents?: never;
+          sealed_at?: string;
+          spent_cents: number;
+          user_id: string;
+        };
+        Update: {
+          allowance_cents?: number;
+          cycle_id?: string;
+          day?: string;
+          id?: string;
+          saved_cents?: never;
+          sealed_at?: string;
+          spent_cents?: number;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'cycle_days_cycle_id_fkey';
+            columns: ['cycle_id'];
+            isOneToOne: false;
+            referencedRelation: 'cycles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       expenses: {
         Row: {
           amount: number;
@@ -139,21 +180,9 @@ export type Database = {
 
 type PublicTables = Database['public']['Tables'];
 
-/**
- * `calc_mode` is a text column guarded by a CHECK constraint, so Postgres reports it as
- * `string`. This narrows it back to the two values the constraint actually allows.
- */
-export type CalcMode = 'dynamic' | 'fixed';
-
-export type CycleRow = Omit<PublicTables['cycles']['Row'], 'calc_mode'> & {
-  calc_mode: CalcMode;
-};
-export type CycleInsert = Omit<PublicTables['cycles']['Insert'], 'calc_mode'> & {
-  calc_mode?: CalcMode;
-};
-export type CycleUpdate = Omit<PublicTables['cycles']['Update'], 'calc_mode'> & {
-  calc_mode?: CalcMode;
-};
+export type CycleRow = PublicTables['cycles']['Row'];
+export type CycleInsert = PublicTables['cycles']['Insert'];
+export type CycleUpdate = PublicTables['cycles']['Update'];
 
 export type ExpenseRow = PublicTables['expenses']['Row'];
 export type ExpenseInsert = PublicTables['expenses']['Insert'];
@@ -162,3 +191,7 @@ export type ExpenseUpdate = PublicTables['expenses']['Update'];
 export type ApiTokenRow = PublicTables['api_tokens']['Row'];
 export type ApiTokenInsert = PublicTables['api_tokens']['Insert'];
 export type ApiTokenUpdate = PublicTables['api_tokens']['Update'];
+
+export type CycleDayRow = PublicTables['cycle_days']['Row'];
+export type CycleDayInsert = PublicTables['cycle_days']['Insert'];
+export type CycleDayUpdate = PublicTables['cycle_days']['Update'];

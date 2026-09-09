@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import type { CalcMode } from '../../domain/budget.ts'
 import type { ApiTokenEntity } from '../../application/useApiTokens.ts'
 import { Copy, Check, Trash2, Key, LogOut, AlertTriangle } from 'lucide-react'
 import { formatFriendlyDate } from '../../application/dateUtils.ts'
@@ -7,11 +6,9 @@ import { formatFriendlyDate } from '../../application/dateUtils.ts'
 export interface SettingsProps {
   initialBudgetCents?: number
   initialClosingDate?: string
-  initialCalcMode?: CalcMode
   onSaveSettings: (settings: {
     budgetCents: number
     closingDate: string
-    calcMode: CalcMode
   }) => Promise<void> | void
   // API Tokens props
   apiTokens?: ApiTokenEntity[]
@@ -27,7 +24,6 @@ export interface SettingsProps {
 export const Settings: React.FC<SettingsProps> = ({
   initialBudgetCents = 30000000,
   initialClosingDate = '2026-09-30',
-  initialCalcMode = 'dynamic',
   onSaveSettings,
   apiTokens = [],
   createdTokenPlaintext = null,
@@ -41,7 +37,6 @@ export const Settings: React.FC<SettingsProps> = ({
     Math.round(initialBudgetCents / 100).toString()
   )
   const [closingDate, setClosingDate] = useState<string>(initialClosingDate)
-  const [calcMode, setCalcMode] = useState<CalcMode>(initialCalcMode)
 
   // Save settings state
   const [isSaving, setIsSaving] = useState<boolean>(false)
@@ -84,7 +79,6 @@ export const Settings: React.FC<SettingsProps> = ({
       await onSaveSettings({
         budgetCents: pesos * 100,
         closingDate,
-        calcMode,
       })
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Error al guardar los ajustes. Intentá nuevamente.')
@@ -225,72 +219,7 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
       </section>
 
-      {/* Regla de cálculo diario */}
-      <section className="w-full mb-5">
-        <span className="block text-[13px] font-medium leading-[16px] text-[#94A3B8] mb-2">
-          Regla de cálculo diario
-        </span>
 
-        {/* Dynamic Mode Radio Card */}
-        <div
-          onClick={() => setCalcMode('dynamic')}
-          className={`w-full h-[76px] bg-[#111827] rounded-[18px] p-3.5 mb-2.5 flex items-center gap-3 cursor-pointer transition-colors border ${
-            calcMode === 'dynamic' ? 'border-[#2563EB]' : 'border-[#1E293B]'
-          }`}
-        >
-          <div
-            className={`w-[22px] h-[22px] rounded-full flex items-center justify-center shrink-0 text-[12px] ${
-              calcMode === 'dynamic'
-                ? 'bg-[#2563EB] text-[#FFFFFF]'
-                : 'bg-[#1E293B] text-transparent'
-            }`}
-          >
-            ✓
-          </div>
-          <div className="flex flex-col justify-center">
-            <span
-              className={`text-[13px] font-bold leading-[16px] ${
-                calcMode === 'dynamic' ? 'text-[#F8FAFC]' : 'text-[#94A3B8]'
-              }`}
-            >
-              Recálculo dinámico inteligente
-            </span>
-            <span className="text-[11px] leading-[14px] text-[#64748B] mt-0.5">
-              Si hoy ahorrás, mañana tenés más margen.
-            </span>
-          </div>
-        </div>
-
-        {/* Fixed Mode Radio Card */}
-        <div
-          onClick={() => setCalcMode('fixed')}
-          className={`w-full h-[76px] bg-[#111827] rounded-[18px] p-3.5 flex items-center gap-3 cursor-pointer transition-colors border ${
-            calcMode === 'fixed' ? 'border-[#2563EB]' : 'border-[#1E293B]'
-          }`}
-        >
-          <div
-            className={`w-[22px] h-[22px] rounded-full flex items-center justify-center shrink-0 text-[12px] ${
-              calcMode === 'fixed'
-                ? 'bg-[#2563EB] text-[#FFFFFF]'
-                : 'bg-[#1E293B] text-transparent'
-            }`}
-          >
-            ✓
-          </div>
-          <div className="flex flex-col justify-center">
-            <span
-              className={`text-[13px] font-bold leading-[16px] ${
-                calcMode === 'fixed' ? 'text-[#F8FAFC]' : 'text-[#94A3B8]'
-              }`}
-            >
-              Cuota diaria fija sin traspaso
-            </span>
-            <span className="text-[11px] leading-[14px] text-[#64748B] mt-0.5">
-              Presupuesto dividido parejo en 30 días.
-            </span>
-          </div>
-        </div>
-      </section>
 
       {/* Explanatory Note Card */}
       <section className="w-full bg-[#0E1B2A] border border-[#1E3A5F] rounded-[20px] p-4 mb-6">
