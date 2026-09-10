@@ -1,6 +1,6 @@
 import { dailyAllowanceCents, daysRemaining } from './budget.ts'
 
-export type DayStatus = 'saved' | 'over' | 'no-record' | 'today' | 'future'
+export type DayStatus = 'saved' | 'over' | 'today' | 'future'
 
 export interface DayResult {
   date: string // YYYY-MM-DD
@@ -8,6 +8,15 @@ export interface DayResult {
   spentCents: number
   savedCents: number // allowanceCents - spentCents, may be negative
   status: DayStatus
+}
+
+/**
+ * Classifies a closed day against its daily allowance.
+ * A day with spentCents <= allowanceCents (including zero spending) is 'saved'.
+ * Otherwise 'over'.
+ */
+export function classifyClosedDay(spentCents: number, allowanceCents: number): 'saved' | 'over' {
+  return spentCents <= allowanceCents ? 'saved' : 'over'
 }
 
 export interface CycleInput {
@@ -93,13 +102,7 @@ export function buildCycleTimeline(params: BuildCycleTimelineParams): DayResult[
       status = 'today'
     } else {
       // Past days (strictly before today)
-      if (spentCents === 0) {
-        status = 'no-record'
-      } else if (spentCents <= allowanceCents) {
-        status = 'saved'
-      } else {
-        status = 'over'
-      }
+      status = classifyClosedDay(spentCents, allowanceCents)
     }
 
     results.push({
@@ -121,7 +124,7 @@ export function buildCycleTimeline(params: BuildCycleTimelineParams): DayResult[
  * Calculates the current streak of consecutive days with status 'saved'.
  * Evaluated walking backwards from the most recent closed day.
  * 'today' and 'future' are not counted and do not break the streak.
- * 'over' and 'no-record' break the streak.
+ * 'over' breaks the streak.
  */
 export function currentStreak(days: readonly DayResult[]): number {
   const closedDays = days.filter((d) => d.status !== 'today' && d.status !== 'future')
@@ -140,7 +143,7 @@ export function currentStreak(days: readonly DayResult[]): number {
  * Calculates the best (maximum) streak of consecutive days with status 'saved'.
  * Evaluated in chronological order over closed days.
  * 'today' and 'future' are not counted and do not break the streak.
- * 'over' and 'no-record' break a streak.
+ * 'over' breaks a streak.
  */
 export function bestStreak(days: readonly DayResult[]): number {
   const closedDays = days.filter((d) => d.status !== 'today' && d.status !== 'future')

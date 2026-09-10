@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   buildCycleTimeline,
+  classifyClosedDay,
   currentStreak,
   bestStreak,
   daysAchieved,
@@ -224,14 +225,7 @@ export function useCycleTimeline(userId: string | null): UseCycleTimelineReturn 
         const sealed = sealedMap.get(computed.date)
         if (sealed) {
           const savedCents = sealed.savedCents ?? (sealed.allowanceCents - sealed.spentCents)
-          let status: DayResult['status']
-          if (sealed.spentCents === 0) {
-            status = 'no-record'
-          } else if (sealed.spentCents <= sealed.allowanceCents) {
-            status = 'saved'
-          } else {
-            status = 'over'
-          }
+          const status = classifyClosedDay(sealed.spentCents, sealed.allowanceCents)
 
           return {
             date: sealed.day,

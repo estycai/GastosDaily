@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   bestStreak,
   buildCycleTimeline,
+  classifyClosedDay,
   currentStreak,
   daysAchieved,
   realSavingsCents,
@@ -89,7 +90,7 @@ describe('buildCycleTimeline', () => {
     expect(results[2].status).toBe('saved')
   })
 
-  it('marks past days with zero expenses as no-record rather than saved', () => {
+  it('marks past days with zero expenses as saved', () => {
     // 3-day cycle: Sept 1 to Sept 3.
     // Day 1 has expense. Day 2 has 0 expenses. Day 3 has expense.
     // Today is Sept 4.
@@ -109,7 +110,7 @@ describe('buildCycleTimeline', () => {
     expect(results[0].status).toBe('saved')
     expect(results[1].date).toBe('2026-09-02')
     expect(results[1].spentCents).toBe(0)
-    expect(results[1].status).toBe('no-record')
+    expect(results[1].status).toBe('saved')
     expect(results[2].status).toBe('saved')
   })
 
@@ -135,7 +136,7 @@ describe('buildCycleTimeline', () => {
 
     expect(results.map((r) => ({ date: r.date, status: r.status }))).toEqual([
       { date: '2026-09-10', status: 'saved' },
-      { date: '2026-09-11', status: 'no-record' },
+      { date: '2026-09-11', status: 'saved' },
       { date: '2026-09-12', status: 'today' },
       { date: '2026-09-13', status: 'future' },
       { date: '2026-09-14', status: 'future' },
@@ -196,20 +197,64 @@ describe('streak and metrics helpers', () => {
     expect(bestStreak(sampleDays)).toBe(3)
   })
 
-  it('streak broken by no-record: breaks streak as expected', () => {
-    const daysWithNoRecord: DayResult[] = [
+  it('zero-spending closed day continues a streak and does not break it', () => {
+    const daysWithZeroSpend: DayResult[] = [
       { date: '2026-09-01', allowanceCents: 1000, spentCents: 500, savedCents: 500, status: 'saved' },
       { date: '2026-09-02', allowanceCents: 1000, spentCents: 500, savedCents: 500, status: 'saved' },
-      { date: '2026-09-03', allowanceCents: 1000, spentCents: 0, savedCents: 1000, status: 'no-record' },
+      { date: '2026-09-03', allowanceCents: 1000, spentCents: 0, savedCents: 1000, status: 'saved' },
       { date: '2026-09-04', allowanceCents: 1000, spentCents: 500, savedCents: 500, status: 'saved' },
       { date: '2026-09-05', allowanceCents: 1000, spentCents: 500, savedCents: 500, status: 'today' },
     ]
-    // Closed days: saved, saved, no-record, saved
-    expect(currentStreak(daysWithNoRecord)).toBe(1)
-    expect(bestStreak(daysWithNoRecord)).toBe(2)
+    // Closed days: saved, saved, saved, saved
+    expect(currentStreak(daysWithZeroSpend)).toBe(4)
+    expect(bestStreak(daysWithZeroSpend)).toBe(4)
   })
 
-  it('handles streak when most recent closed day is over or no-record (current streak = 0)', () => {
+  it('regression: a closed day with zero expenses is saved, counts in daysAchieved, and continues a streak', () => {
+    // User scenario: cycle 8 Sept - 1 Oct, today 10 Sept
+    // 8 Sept: spent 8500 of 14583 -> saved
+    // 9 Sept: spent 0 of 14848 -> saved
+    // 10 Sept: today
+    const timeline = buildCycleTimeline({
+      cycle: {
+        startDate: '2026-09-08',
+        endDate: '2026-10-01',
+        totalBudgetCents: 350000,
+      },
+      expenses: [
+        { expenseDate: '2026-09-08', amountCents: 8500 },
+      ],
+      today: '2026-09-10',
+    })
+
+    const sept8 = timeline.find((d) => d.date === '2026-09-08')!
+    const sept9 = timeline.find((d) => d.date === '2026-09-09')!
+    const sept10 = timeline.find((d) => d.date === '2026-09-10')!
+
+    expect(sept8.status).toBe('saved')
+    expect(sept9.status).toBe('saved')
+    expect(sept9.spentCents).toBe(0)
+    expect(sept9.savedCents).toBe(sept9.allowanceCents)
+    expect(sept10.status).toBe('today')
+
+    // Days achieved: 2/2 closed days
+    const stats = daysAchieved(timeline)
+    expect(stats.achieved).toBe(2)
+    expect(stats.closed).toBe(2)
+
+    // Current streak: 2 days
+    expect(currentStreak(timeline)).toBe(2)
+    expect(bestStreak(timeline)).toBe(2)
+  })
+
+  it('classifyClosedDay correctly classifies spentCents against allowanceCents', () => {
+    expect(classifyClosedDay(0, 1000)).toBe('saved')
+    expect(classifyClosedDay(500, 1000)).toBe('saved')
+    expect(classifyClosedDay(1000, 1000)).toBe('saved')
+    expect(classifyClosedDay(1001, 1000)).toBe('over')
+  })
+
+  it('handles streak when most recent closed day is over (current streak = 0)', () => {
     const brokenEnd: DayResult[] = [
       { date: '2026-09-01', allowanceCents: 1000, spentCents: 500, savedCents: 500, status: 'saved' },
       { date: '2026-09-02', allowanceCents: 1000, spentCents: 1500, savedCents: -500, status: 'over' },

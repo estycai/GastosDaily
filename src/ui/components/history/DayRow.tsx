@@ -121,22 +121,13 @@ export const DayRow: React.FC<DayRowProps> = ({
                 te sobró
               </span>
             </>
-          ) : day.status === 'over' ? (
+          ) : (
             <>
               <span className="text-[15px] font-bold text-[#EF4444] leading-[19px]">
                 - {formatArs(Math.abs(day.savedCents))}
               </span>
               <span className="text-[11px] text-[#64748B] leading-[14px]">
                 te pasaste
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="text-[15px] font-bold text-[#64748B] leading-[19px]">
-                $ 0
-              </span>
-              <span className="text-[11px] text-[#64748B] leading-[14px]">
-                sin registro
               </span>
             </>
           )}

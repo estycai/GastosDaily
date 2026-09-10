@@ -66,7 +66,7 @@ export const CycleHeatmap: React.FC<CycleHeatmapProps> = ({
           let cellBg = 'bg-[#111827]'
           let cellBorder = 'border border-transparent'
           let cellTextColor = 'text-[#64748B]'
-          let statusLabel = 'Sin registro'
+          let statusLabel = ''
 
           if (isToday) {
             // Today's cell gets a blue border and NO verdict color
@@ -82,10 +82,6 @@ export const CycleHeatmap: React.FC<CycleHeatmapProps> = ({
             cellBg = 'bg-[#450A0A]'
             cellTextColor = 'text-[#EF4444]'
             statusLabel = 'Pasado'
-          } else if (day.status === 'no-record') {
-            cellBg = 'bg-[#1E293B]'
-            cellTextColor = 'text-[#64748B]'
-            statusLabel = 'Sin registro'
           } else if (day.status === 'future') {
             cellBg = 'bg-[#111827]/40'
             cellTextColor = 'text-[#475569]'
@@ -106,7 +102,7 @@ export const CycleHeatmap: React.FC<CycleHeatmapProps> = ({
         })}
       </div>
 
-      {/* Legend row with four swatches */}
+      {/* Legend row with three swatches */}
       <div className="flex items-center justify-between text-[11px] text-[#94A3B8] pt-3 border-t border-[#1E293B]">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-[3px] bg-[#34D399]" />
@@ -115,10 +111,6 @@ export const CycleHeatmap: React.FC<CycleHeatmapProps> = ({
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-[3px] bg-[#EF4444]" />
           <span>Pasado</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-[3px] bg-[#1E293B]" />
-          <span>Sin registro</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-[3px] border border-[#3B82F6] bg-[#172554]" />
