@@ -154,7 +154,7 @@ export const Settings: React.FC<SettingsProps> = ({
   }
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-[#0B0E14] px-5 pt-6 pb-24 text-[#F8FAFC]">
+    <div className="flex flex-col w-full min-h-screen bg-[#0B0E14] px-5 pt-6 pb-[calc(6rem+var(--safe-bottom))] text-[#F8FAFC]">
       {/* Screen Header */}
       <header className="flex justify-between items-center w-full mb-5">
         <div>

@@ -10,7 +10,7 @@ interface BottomNavProps {
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab }) => {
   return (
     <nav
-      className="w-full h-[76px] bg-[#0E121A] border-t border-[#1E293B] flex items-center justify-around px-4 select-none shrink-0 fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[430px] z-30"
+      className="w-full h-[calc(76px+var(--safe-bottom))] pb-[var(--safe-bottom)] bg-[#0E121A] border-t border-[#1E293B] flex items-center justify-around px-4 select-none shrink-0 fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[430px] z-30"
       aria-label="Navegación principal"
     >
       {/* Hoy Tab */}

@@ -25,6 +25,8 @@
 }
 
 :root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
   --gd-bg: #0B0E14;
   --gd-surface: #111827;
   --gd-surface-alt: #1E293B;
@@ -80,3 +82,8 @@ body {
   position: relative;
   background-color: var(--gd-bg);
 }
+
+.app-shell {
+  padding-top: var(--safe-top);
+}
+

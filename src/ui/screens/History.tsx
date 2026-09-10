@@ -94,7 +94,7 @@ export const History: React.FC<HistoryProps> = ({ userId }) => {
 
   if (loading) {
     return (
-      <div className="flex flex-col w-full px-5 pt-6 pb-24 text-[#F8FAFC]">
+      <div className="flex flex-col w-full px-5 pt-6 pb-[calc(6rem+var(--safe-bottom))] text-[#F8FAFC]">
         {/* Screen Header */}
         <header className="flex justify-between items-center w-full mb-5">
           <div>
@@ -128,7 +128,7 @@ export const History: React.FC<HistoryProps> = ({ userId }) => {
 
   if (error) {
     return (
-      <div className="flex flex-col w-full px-5 pt-6 pb-24 text-[#F8FAFC]">
+      <div className="flex flex-col w-full px-5 pt-6 pb-[calc(6rem+var(--safe-bottom))] text-[#F8FAFC]">
         <header className="flex justify-between items-center w-full mb-5">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] leading-[14px]">
@@ -168,7 +168,7 @@ export const History: React.FC<HistoryProps> = ({ userId }) => {
   const hasClosedDays = achievedData.closed > 0
 
   return (
-    <div className="flex flex-col w-full px-5 pt-6 pb-24 text-[#F8FAFC]">
+    <div className="flex flex-col w-full px-5 pt-6 pb-[calc(6rem+var(--safe-bottom))] text-[#F8FAFC]">
       {/* Screen Header */}
       <header className="flex justify-between items-center w-full mb-5">
         <div>

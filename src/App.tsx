@@ -174,7 +174,7 @@ export function App() {
   // 1. Loading gate: Show a dark loading state without flashing Login screen
   if (sessionLoading || (session && (cycleLoading || (activeCycle && expensesLoading)))) {
     return (
-      <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center justify-center text-[#F8FAFC]">
+      <main className="app-shell w-full min-h-screen bg-[#0B0E14] flex flex-col items-center justify-center text-[#F8FAFC]">
         <div className="w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full animate-spin mb-4" />
         <span className="text-[13px] font-medium text-[#64748B]">Cargando...</span>
       </main>
@@ -184,7 +184,7 @@ export function App() {
   // 2. Auth gate: No session -> Login
   if (!session) {
     return (
-      <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
+      <main className="app-shell w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
         <Login
           onSendMagicLink={sendMagicLink}
           onSignInWithGoogle={signInWithGoogle}
@@ -200,7 +200,7 @@ export function App() {
   const loadError = cycleError || (activeCycle && expensesError) || tokensError
   if (loadError) {
     return (
-      <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center justify-center px-5 py-8 text-[#F8FAFC]">
+      <main className="app-shell w-full min-h-screen bg-[#0B0E14] flex flex-col items-center justify-center px-5 py-8 text-[#F8FAFC]">
         <div className="w-full max-w-[353px] bg-[#111827] border border-[#1E293B] rounded-[24px] p-6 text-center shadow-xl">
           <div className="w-12 h-12 rounded-full bg-[#450A0A] border border-[#EF4444]/30 flex items-center justify-center mx-auto mb-4 text-[#EF4444] text-[20px]">
             ⚠️
@@ -226,7 +226,7 @@ export function App() {
   // 4. No active cycle gate: Direct user straight to Settings
   if (!activeCycle) {
     return (
-      <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
+      <main className="app-shell w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
         <div className="w-full px-5 pt-6 pb-2 text-[#F8FAFC]">
           <div className="bg-[#1E293B] border border-[#3B82F6]/40 rounded-[18px] p-4 text-center">
             <h2 className="text-[16px] font-bold text-[#FFFFFF] mb-1">
@@ -255,7 +255,7 @@ export function App() {
 
   // 5. Session & Active Cycle -> Render Main App
   return (
-    <main className="w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
+    <main className="app-shell w-full min-h-screen bg-[#0B0E14] flex flex-col items-center relative overflow-x-hidden">
       {isRegisterOpen ? (
         <RegisterExpense
           currentDailyAllowanceCents={dailyAllowance}
